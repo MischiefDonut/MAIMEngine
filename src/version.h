@@ -97,18 +97,18 @@ const char *GetVersionString();
 #define SAVEVER 4560
 
 // This is so that derivates can use the same savegame versions without worrying about engine compatibility
-#define GAMESIG "DISDAIN"
+#define GAMESIG "MAIM"
 #define BASEWAD "engine.pk3"
 #define OPTIONALWAD "game_support.pk3"
 #define GZDOOM 1
 #define VR3D_ENABLED
 
 // More stuff that needs to be different for derivatives.
-#define GAMENAME "Disdain"
-#define WGAMENAME L"Disdain"
-#define GAMENAMELOWERCASE "disdain"
-#define FORUM_URL "http://disdainfps.com/"
-#define BUGS_FORUM_URL	"http://forum.disdainfps.com/"
+#define GAMENAME "MAIM"
+#define WGAMENAME L"MAIM"
+#define GAMENAMELOWERCASE "maim"
+#define FORUM_URL "https://www.mischiefdonut.com/"
+#define BUGS_FORUM_URL	"https://forum.mischiefdonut.com/"
 
 #if defined(__APPLE__) || defined(_WIN32)
 #define GAME_DIR GAMENAME
@@ -124,6 +124,6 @@ const int VID_MIN_WIDTH = 320;
 const int VID_MIN_HEIGHT = 200;
 
 // [Disdain]
-#define DISDAINVERSION "13"
+#define DISDAINVERSION "1"
 
 #endif //__VERSION_H__

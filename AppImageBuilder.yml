@@ -3,11 +3,11 @@ version: 1
 AppDir:
   path: ./AppDir
   app_info:
-    id: com.Disdain.app
-    name: Disdain
+    id: com.MAIM.app
+    name: MAIM
     icon: game_icon.png
     version: latest
-    exec: ./disdain
+    exec: ./MAIM
     exec_args: $@
   apt:
     arch: amd64

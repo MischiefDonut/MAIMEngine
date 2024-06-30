@@ -9,11 +9,11 @@
 	<key>CFBundleIconFile</key>
 	<string>zdoom.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.mischiefdonut.disdain</string>
+	<string>com.mischiefdonut.maim</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Disdain</string>
+	<string>MAIM</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
