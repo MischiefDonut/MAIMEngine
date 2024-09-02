@@ -27,10 +27,12 @@ if( APPLE )
     option( OSX_COCOA_BACKEND "Use native Cocoa backend instead of SDL" ON )
 endif()
 
-option( ZDOOM_ENABLE_SWR "Enable software renderer" ON )
-if( NOT ZDOOM_ENABLE_SWR )
-	add_definitions( -DNO_SWRENDERER )
-endif()
+#option( ZDOOM_ENABLE_SWR "Enable software renderer" ON )
+#if( NOT ZDOOM_ENABLE_SWR )
+#	add_definitions( -DNO_SWRENDERER )
+#endif()
+# [Disdain] no software renderer, ever
+add_definitions( -DNO_SWRENDERER )
 
 target_architecture(TARGET_ARCHITECTURE)
 message(STATUS "Architecture is ${TARGET_ARCHITECTURE}")
@@ -539,11 +541,13 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
 
-option( SEND_ANON_STATS "Enable sending of anonymous hardware statistics" ON )
+#option( SEND_ANON_STATS "Enable sending of anonymous hardware statistics" ON )
 
-if( NOT SEND_ANON_STATS )
-	add_definitions( -DNO_SEND_STATS )
-endif()
+#if( NOT SEND_ANON_STATS )
+#	add_definitions( -DNO_SEND_STATS )
+#endif()
+# [Disdain] No need to send stats to GZDoom
+add_definitions( -DNO_SEND_STATS )
 
 # Project files should be aware of the header files. We can GLOB these since
 # there's generally a new cpp for every header so this file will get changed
@@ -1123,7 +1127,6 @@ set (PCH_SOURCES
 	common/rendering/hwrenderer/data/hw_collision.cpp
 	common/rendering/hwrenderer/data/hw_levelmesh.cpp
 	common/rendering/hwrenderer/data/hw_meshbuilder.cpp
-	common/rendering/hwrenderer/data/hw_mesh.cpp
 	common/rendering/hwrenderer/postprocessing/hw_postprocessshader.cpp
 	common/rendering/hwrenderer/postprocessing/hw_postprocess.cpp
 	common/rendering/hwrenderer/postprocessing/hw_postprocess_cvars.cpp
