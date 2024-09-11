@@ -104,7 +104,6 @@ protected:
 class IHardwareTexture;
 class FTexture;
 
-
 class DFrameBuffer
 {
 private:
@@ -204,6 +203,7 @@ public:
 	void SetClearColor(int color);
 	virtual int Backend() { return 0; }
 	virtual const char* DeviceName() const { return "Unknown"; }
+	virtual void UpdateLinearDepthTexture() {}
 	virtual void AmbientOccludeScene(float m5) {}
 	virtual void FirstEye() {}
 	virtual void NextEye(int eyecount) {}

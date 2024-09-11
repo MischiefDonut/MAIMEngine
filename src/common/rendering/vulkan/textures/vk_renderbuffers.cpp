@@ -78,6 +78,12 @@ void VkRenderBuffers::BeginFrame(int width, int height, int sceneWidth, int scen
 	if (width != mWidth || height != mHeight || mSamples != samples)
 		CreateScene(width, height, samples);
 
+	if (sceneWidth != mSceneWidth || sceneHeight != mSceneHeight)
+	{
+		SceneLinearDepth.Reset(fb);
+		CreateSceneLinearDepth(std::max(sceneWidth, 1), std::max(sceneHeight, 1));
+	}
+
 	mWidth = width;
 	mHeight = height;
 	mSamples = samples;
@@ -249,6 +255,21 @@ void VkRenderBuffers::CreateSceneFog(int width, int height, VkSampleCountFlagBit
 	SceneFog.View = ImageViewBuilder()
 		.Image(SceneFog.Image.get(), VK_FORMAT_R8G8B8A8_UNORM)
 		.DebugName("VkRenderBuffers.SceneFogView")
+		.Create(fb->GetDevice());
+}
+
+void VkRenderBuffers::CreateSceneLinearDepth(int width, int height)
+{
+	SceneLinearDepth.Image = ImageBuilder()
+		.Size(width, height)
+		.Format(VK_FORMAT_R32_SFLOAT)
+		.Usage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
+		.DebugName("VkRenderBuffers.SceneLinearDepth")
+		.Create(fb->GetDevice());
+
+	SceneLinearDepth.View = ImageViewBuilder()
+		.Image(SceneLinearDepth.Image.get(), VK_FORMAT_R32_SFLOAT)
+		.DebugName("VkRenderBuffers.SceneLinearDepthView")
 		.Create(fb->GetDevice());
 }
 

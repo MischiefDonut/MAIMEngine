@@ -634,6 +634,11 @@ FRenderState* VulkanRenderDevice::RenderState()
 	return mRenderState.get();
 }
 
+void VulkanRenderDevice::UpdateLinearDepthTexture()
+{
+	mPostprocess->UpdateLinearDepthTexture();
+}
+
 void VulkanRenderDevice::AmbientOccludeScene(float m5)
 {
 	mPostprocess->AmbientOccludeScene(m5);
