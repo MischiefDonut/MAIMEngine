@@ -111,6 +111,12 @@ void FIWadManager::ParseIWadInfo(const char *fn, const char *data, int datasize,
 						iwad->prio = sc.Number;
 					}
 				}
+				else if (sc.Compare("SupportWAD"))
+				{
+					sc.MustGetStringName("=");
+					sc.MustGetString();
+					iwad->SupportWAD = sc.String;
+				}
 				else if (sc.Compare("Config"))
 				{
 					sc.MustGetStringName("=");
@@ -460,9 +466,10 @@ void FIWadManager::CollectSearchPaths()
 			}
 		}
 	}
-	mSearchPaths.Append(I_GetGogPaths());
-	mSearchPaths.Append(I_GetSteamPath());
-	mSearchPaths.Append(I_GetBethesdaPath());
+	// [Disdain] no need to look for other IWADs
+	//mSearchPaths.Append(I_GetGogPaths());
+	//mSearchPaths.Append(I_GetSteamPath());
+	//mSearchPaths.Append(I_GetBethesdaPath());
 
 	// Unify and remove trailing slashes
 	for (auto &str : mSearchPaths)
@@ -561,6 +568,18 @@ void FIWadManager::ValidateIWADs()
 //==========================================================================
 
 static bool havepicked = false;
+
+
+FString FIWadManager::IWADPathFileSearch(const FString &file)
+{
+	for(const FString &path : mSearchPaths)
+	{
+		FString f = path + "/" + file;
+		if(FileExists(f)) return f;
+	}
+
+	return "";
+}
 
 int FIWadManager::IdentifyVersion (std::vector<std::string>&wadfiles, const char *iwad, const char *zdoom_wad, const char *optional_wad)
 {
@@ -802,11 +821,11 @@ int FIWadManager::IdentifyVersion (std::vector<std::string>&wadfiles, const char
 	D_AddFile (wadfiles, zdoom_wad, true, -1, GameConfig);
 
 	// [SP] Load non-free assets if available. This must be done before the IWAD.
-	int iwadnum;
+	int iwadnum = 1;
 	if (D_AddFile(wadfiles, optional_wad, true, -1, GameConfig))
-		iwadnum = 2;
-	else
-		iwadnum = 1;
+	{
+		iwadnum++;
+	}
 
 	fileSystem.SetIwadNum(iwadnum);
 	if (picks[pick].mRequiredPath.IsNotEmpty())
@@ -818,6 +837,17 @@ int FIWadManager::IdentifyVersion (std::vector<std::string>&wadfiles, const char
 	fileSystem.SetMaxIwadNum(iwadnum);
 
 	auto info = mIWadInfos[picks[pick].mInfoIndex];
+
+	if(info.SupportWAD.IsNotEmpty())
+	{
+		FString supportWAD = IWADPathFileSearch(info.SupportWAD);
+
+		if(supportWAD.IsNotEmpty())
+		{
+			D_AddFile(wadfiles, supportWAD.GetChars(), true, -1, GameConfig);
+		}
+	}
+
 	// Load additional resources from the same directory as the IWAD itself.
 	for (unsigned i=0; i < info.Load.Size(); i++)
 	{
