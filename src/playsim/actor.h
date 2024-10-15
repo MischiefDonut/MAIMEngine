@@ -447,6 +447,7 @@ enum ActorFlag9
 	MF9_DECOUPLEDANIMATIONS		= 0x00000010,	// [RL0] Decouple model animations from states
 	MF9_NOSECTORDAMAGE			= 0x00000020,	// [inkoalawetrust] Actor ignores any sector-based damage (i.e damaging floors, NOT crushers)
 	MF9_ISPUFF					= 0x00000040,	// [AA] Set on actors by P_SpawnPuff
+	MF9_FORCESECTORDAMAGE		= 0x00000080,	// [inkoalawetrust] Actor ALWAYS takes hurt floor damage if there's any. Even if the floor doesn't have SECMF_HURTMONSTERS.
 };
 
 // For Disdain-specific features.
@@ -514,7 +515,8 @@ enum ActorRenderFlag2
 	RF2_CAMFOLLOWSPLAYER		= 0x0040,	// Matches the cam's base position and angles to the main viewpoint.
 	RF2_NOMIPMAP				= 0x0080,	// [Nash] forces no mipmapping on sprites. Useful for tiny sprites that need to remain visually crisp
 	RF2_ISOMETRICSPRITES		= 0x0100,
-	RF2_SQUAREPIXELS		= 0x0200,	// apply +ROLLSPRITE scaling math so that non rolling sprites get the same scaling
+	RF2_SQUAREPIXELS			= 0x0200,	// apply +ROLLSPRITE scaling math so that non rolling sprites get the same scaling
+	RF2_STRETCHPIXELS			= 0x0400,	// don't apply SQUAREPIXELS for ROLLSPRITES
 };
 
 // This translucency value produces the closest match to Heretic's TINTTAB.
