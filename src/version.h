@@ -108,6 +108,7 @@ const char *GetVersionString();
 #define GAMENAME "MAIM"
 #define WGAMENAME L"MAIM"
 #define GAMENAMELOWERCASE "maim"
+#define TOOLNAMELOWERCASE "vktool"
 #define QUERYIWADDEFAULT false
 #define FORUM_URL "https://www.mischiefdonut.com/"
 #define BUGS_FORUM_URL	"https://forum.mischiefdonut.com/"
