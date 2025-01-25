@@ -1791,6 +1791,8 @@ FxConstant * FxTypeCast::convertRawFunctionToFunctionPointer(FxExpression * in, 
 	}
 }
 
+int GetSpriteIndex(const char * spritename, bool add);
+
 FxExpression *FxTypeCast::Resolve(FCompileContext &ctx)
 {
 	CHECKRESOLVED();
@@ -1816,6 +1818,22 @@ FxExpression *FxTypeCast::Resolve(FCompileContext &ctx)
 		FxConstant *val = static_cast<FxConstant*>(basex);
 		val->ValueType = val->value.Type = TypeVMFunction;
 		val->value.pointer = static_cast<PFunction*>(val->value.pointer)->Variants[0].Implementation;
+	}
+	else if (basex->isConstant() && basex->ValueType == TypeString && ValueType == TypeSpriteID)
+	{
+		FxConstant *val = static_cast<FxConstant*>(basex);
+		FString soundName = val->value.GetString();
+
+		val->ValueType = val->value.Type = TypeSpriteID;
+		val->value.Int = GetSpriteIndex(soundName.GetChars(), true);
+	}
+	else if (basex->isConstant() && basex->ValueType == TypeName && ValueType == TypeSpriteID)
+	{
+		FxConstant *val = static_cast<FxConstant*>(basex);
+		FName soundName {ENamedName(val->value.GetInt())};
+
+		val->ValueType = val->value.Type = TypeSpriteID;
+		val->value.Int = GetSpriteIndex(soundName.GetChars(), true);
 	}
 
 	// first deal with the simple types

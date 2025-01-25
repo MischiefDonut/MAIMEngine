@@ -521,12 +521,9 @@ void VulkanRenderDevice::BeginFrame()
 	{
 		levelMeshChanged = false;
 		mLevelMesh->SetLevelMesh(levelMesh);
-
-		if (levelMesh && levelMesh->Lightmap.TextureCount > 0)
-		{
+		if (levelMesh)
 			GetTextureManager()->CreateLightmap(levelMesh->Lightmap.TextureSize, levelMesh->Lightmap.TextureCount, std::move(levelMesh->Lightmap.TextureData));
-			GetLightmapper()->SetLevelMesh(levelMesh);
-		}
+		GetLightmapper()->SetLevelMesh(levelMesh);
 	}
 
 	SetViewportRects(nullptr);
@@ -689,9 +686,9 @@ int VulkanRenderDevice::GetLevelMeshPipelineID(const MeshApplyData& applyData, c
 
 	VkPipelineKey pipelineKey;
 	pipelineKey.DrawType = DT_Triangles;
-	pipelineKey.VertexFormat = levelVertexFormatIndex;
 	pipelineKey.RenderStyle = applyData.RenderStyle;
 	pipelineKey.DepthFunc = applyData.DepthFunc;
+	pipelineKey.ShaderKey.VertexFormat = levelVertexFormatIndex;
 	if (applyData.SpecialEffect > EFF_NONE)
 	{
 		pipelineKey.ShaderKey.SpecialEffect = applyData.SpecialEffect;

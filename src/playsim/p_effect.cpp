@@ -1110,9 +1110,9 @@ void DVisualThinker::Tick()
 		return;
 
 	// There won't be a standard particle for this, it's only for graphics.
-	if (!PT.texture.isValid())
+	if (!PT.texture.isValid() && !modelClass)
 	{
-		Printf("No valid texture, destroyed");
+		Printf("No valid texture or model, destroyed");
 		Destroy();
 		return;
 	}
@@ -1126,6 +1126,9 @@ void DVisualThinker::Tick()
 	}
 	Prev = PT.Pos;
 	PrevRoll = PT.Roll;
+	PrevAngle = Angle;
+	PrevPitch = Pitch;
+	PrevScale = Scale;
 	// Handle crossing a line portal
 	DVector2 newxy = Level->GetPortalOffsetPosition(PT.Pos.X, PT.Pos.Y, PT.Vel.X, PT.Vel.Y);
 	PT.Pos.X = newxy.X;
@@ -1187,6 +1190,42 @@ float DVisualThinker::InterpolatedRoll(double ticFrac) const
 	return float(PrevRoll + (PT.Roll - PrevRoll) * ticFrac);
 }
 
+DVector2 DVisualThinker::InterpolatedScale(double ticFrac) const
+{
+	if (flags & VTF_DontInterpolate) return Scale;
+
+	return PrevScale + (Scale - PrevScale) * ticFrac;
+}
+
+
+static void ClearModel(DVisualThinker * self)
+{
+	self->modelClass = nullptr;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DVisualThinker, ClearModel, ClearModel)
+{
+	PARAM_SELF_PROLOGUE(DVisualThinker);
+	ClearModel(self);
+	return 0;
+}
+
+static void SetModel(DVisualThinker * self, PClass * modelClass, int modelSprite, int modelFrame)
+{
+	self->modelClass = modelClass;
+	self->modelSprite = modelSprite;
+	self->modelFrame = modelFrame;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DVisualThinker, SetModel, SetModel)
+{
+	PARAM_SELF_PROLOGUE(DVisualThinker);
+	PARAM_CLASS(modelClass, AActor);
+	PARAM_INT(modelSprite);
+	PARAM_INT(modelFrame);
+	SetModel(self, modelClass, modelSprite, modelFrame);
+	return 0;
+}
 
 
 void DVisualThinker::SetTranslation(FName trname)
@@ -1287,6 +1326,13 @@ void DVisualThinker::Serialize(FSerializer& arc)
 	arc ("pos", PT.Pos)
 		("vel", PT.Vel)
 		("prev", Prev)
+		("angle", Angle)
+		("prevAngle", PrevAngle)
+		("pitch", Pitch)
+		("prevPitch", PrevPitch)
+		("modelClass", modelClass)
+		("modelSprite", modelSprite)
+		("modelFrame", modelFrame)
 		("scale", Scale)
 		("roll", PT.Roll)
 		("prevroll", PrevRoll)
@@ -1320,8 +1366,13 @@ DEFINE_FIELD_NAMED(DVisualThinker, flags, VisualThinkerFlags);
 
 DEFINE_FIELD(DVisualThinker, Prev);
 DEFINE_FIELD(DVisualThinker, Scale);
+DEFINE_FIELD(DVisualThinker, PrevScale);
 DEFINE_FIELD(DVisualThinker, Offset);
 DEFINE_FIELD(DVisualThinker, PrevRoll);
+DEFINE_FIELD(DVisualThinker, Angle);
+DEFINE_FIELD(DVisualThinker, Pitch);
+DEFINE_FIELD(DVisualThinker, PrevAngle);
+DEFINE_FIELD(DVisualThinker, PrevPitch);
 DEFINE_FIELD(DVisualThinker, Translation);
 DEFINE_FIELD(DVisualThinker, LightLevel);
 DEFINE_FIELD(DVisualThinker, cursector);

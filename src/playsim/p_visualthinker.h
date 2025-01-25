@@ -28,18 +28,26 @@ class DVisualThinker : public DThinker
 	void UpdateSector(subsector_t * newSubsector);
 public:
 	DVector3		Prev;
-	DVector2		Scale,
+	DVector2		Scale, PrevScale,
 					Offset;
 	float			PrevRoll;
+	float			Angle, Pitch;
+	float			PrevAngle, PrevPitch;
+
 	int16_t			LightLevel;
 	FTranslationID	Translation;
 	FTextureID		AnimatedTexture;
 	sector_t		*cursector;
+	
+	PClass			*modelClass;
+	int				modelSprite;
+	int				modelFrame;
 
 	int flags;
 
 	// internal only variables
 	particle_t		PT;
+	sun_trace_cache_t StaticLightsTraceCache;
 
 	DVisualThinker();
 	void Construct();
@@ -52,6 +60,7 @@ public:
 	int GetLightLevel(sector_t *rendersector) const;
 	FVector3 InterpolatedPosition(double ticFrac) const;
 	float InterpolatedRoll(double ticFrac) const;
+	DVector2 InterpolatedScale(double ticFrac) const;
 
 	void Tick() override;
 	void UpdateSpriteInfo();

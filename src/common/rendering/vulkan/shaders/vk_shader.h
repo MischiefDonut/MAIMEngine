@@ -10,6 +10,8 @@
 #include <list>
 #include <map>
 
+#include "hw_dynlightdata.h"
+
 #include "hwrenderer/postprocessing/hw_useruniforms.h"
 
 class ShaderIncludeResult;
@@ -33,11 +35,11 @@ struct SurfaceUniformsUBO
 	SurfaceUniforms data[MAX_SURFACE_UNIFORMS];
 };
 
-#define MAX_LIGHT_DATA ((int)(65536 / sizeof(FVector4)))
-
-struct LightBufferUBO
+struct LightBufferSSO
 {
-	FVector4 lights[MAX_LIGHT_DATA];
+	//TODO deduplicate individual lights
+	int lightIndex[MAX_LIGHT_DATA * 4];
+	FDynLightInfo lights[MAX_LIGHT_DATA];
 };
 
 #define MAX_FOGBALL_DATA ((int)(65536 / sizeof(Fogball)))
@@ -80,7 +82,9 @@ public:
 		struct
 		{
 			uint64_t AlphaTest : 1;     // !NO_ALPHATEST
-			uint64_t Simple2D : 1;      // uFogEnabled == -3
+			uint64_t Simple : 1;		// SIMPLE
+			uint64_t Simple2D : 1;      // SIMPLE2D, uFogEnabled == -3
+			uint64_t Simple3D : 1;		// SIMPLE3D
 			uint64_t TextureMode : 3;   // uTextureMode & 0xffff
 			uint64_t ClampY : 1;        // uTextureMode & TEXF_ClampY
 			uint64_t Brightmap : 1;     // uTextureMode & TEXF_Brightmap
@@ -104,20 +108,25 @@ public:
 			uint64_t LightAttenuationMode : 1; // LIGHT_ATTENUATION_LINEAR , LIGHT_ATTENUATION_INVERSE_SQUARE
 			uint64_t UseRaytracePrecise : 1; // USE_RAYTRACE_PRECISE
 			uint64_t ShadowmapFilter : 4; // SHADOWMAP_FILTER
-			uint64_t Unused : 32;
+			uint64_t ShadeVertex : 1; // SHADE_VERTEX
+			uint64_t LightNoNormals : 1; // LIGHT_NONORMALS
+			uint64_t UseSpriteCenter : 1; // USE_SPRITE_CENTER
+			uint64_t Unused : 27;
 		};
 		uint64_t AsQWORD = 0;
 	};
 
 	int SpecialEffect = 0;
 	int EffectState = 0;
+	int VertexFormat = 0;
+	int Padding = 0;
 
 	bool operator<(const VkShaderKey& other) const { return memcmp(this, &other, sizeof(VkShaderKey)) < 0; }
 	bool operator==(const VkShaderKey& other) const { return memcmp(this, &other, sizeof(VkShaderKey)) == 0; }
 	bool operator!=(const VkShaderKey& other) const { return memcmp(this, &other, sizeof(VkShaderKey)) != 0; }
 };
 
-static_assert(sizeof(VkShaderKey) == 16, "sizeof(VkShaderKey) is not its expected size!"); // If this assert fails, the flags union no longer adds up to 64 bits. Or there are gaps in the class so the memcmp doesn't work.
+static_assert(sizeof(VkShaderKey) == 24, "sizeof(VkShaderKey) is not its expected size!"); // If this assert fails, the flags union no longer adds up to 64 bits. Or there are gaps in the class so the memcmp doesn't work.
 
 class VkShaderProgram
 {

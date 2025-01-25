@@ -1,6 +1,7 @@
 
 #include "hw_levelmesh.h"
 #include "halffloat.h"
+#include "hw_dynlightdata.h"
 
 LevelMesh::LevelMesh()
 {
@@ -35,11 +36,10 @@ void LevelMesh::Reset(const LevelMeshLimits& limits)
 	Mesh.Materials.Resize(limits.MaxUniforms);
 
 	int maxLights = 20'000;
-	int maxDynlights = 50'000;
 
 	Mesh.Lights.Resize(maxLights);
 	Mesh.LightIndexes.Resize(limits.MaxSurfaces * 10);
-	Mesh.DynLights.Resize(maxDynlights * 4);
+	Mesh.DynLights.Resize((sizeof(int) * 4) + MAX_LIGHT_DATA * sizeof(FDynLightInfo));
 
 	Mesh.Indexes.Resize(limits.MaxIndexes);
 	Mesh.SurfaceIndexes.Resize(limits.MaxIndexes / 3 + 1);
@@ -105,7 +105,7 @@ LevelMeshSurface* LevelMesh::Trace(const FVector3& start, FVector3 direction, fl
 		hitSurface = &Mesh.Surfaces[Mesh.SurfaceIndexes[hit.triangle]];
 
 		int portal = hitSurface->PortalIndex;
-		if (!portal)
+		if (!portal && hitSurface->Alpha >= 1.0)
 		{
 			break;
 		}
