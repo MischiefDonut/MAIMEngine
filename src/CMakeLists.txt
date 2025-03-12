@@ -1449,7 +1449,7 @@ if( APPLE )
 	set_target_properties(zdoom PROPERTIES
 		LINK_FLAGS "${LINK_FRAMEWORKS}"
 		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/zdoom-info.plist"
-		XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "org.vkdoom.vkdoom"
+		XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.mischiefdonut.maim"
 		XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "" )
 
 	set_target_properties(ztool PROPERTIES
