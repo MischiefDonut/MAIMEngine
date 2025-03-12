@@ -336,6 +336,7 @@ void VkRenderState::ApplyRenderPass(int dt)
 	pipelineKey.ShaderKey.UseShadowmap = gl_light_shadows == 1;
 	pipelineKey.ShaderKey.UseRaytrace = gl_light_shadows >= 2;
 	pipelineKey.ShaderKey.UseRaytracePrecise = gl_light_shadows >= 3;
+	pipelineKey.ShaderKey.PreciseMidtextureTrace = gl_precise_midtextures_trace;
 	pipelineKey.ShaderKey.ShadowmapFilter = std::clamp(int(gl_light_shadow_filter), 0, 15);
 
 	pipelineKey.ShaderKey.GBufferPass = mRenderTarget.DrawBuffers > 1;
@@ -468,6 +469,8 @@ void VkRenderState::ApplySurfaceUniforms()
 	}
 }
 
+TArray<char> buffer;
+
 void VkRenderState::ApplyPushConstants()
 {
 	mPushConstants.uDataIndex = mRSBuffers->SurfaceUniformsBuffer->DataIndex();
@@ -475,11 +478,25 @@ void VkRenderState::ApplyPushConstants()
 	mPushConstants.uBoneIndexBase = mBoneIndexBase;
 	mPushConstants.uFogballIndex = mFogballIndex >= 0 ? (mFogballIndex % MAX_FOGBALL_DATA) : -1;
 
-	mCommandBuffer->pushConstants(fb->GetRenderPassManager()->GetPipelineLayout(mPipelineKey.ShaderKey.UseLevelMesh, mUniforms.sz), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, (uint32_t)sizeof(PushConstants), &mPushConstants);
-
+	
 	if(mUniforms.sz > 0)
 	{
-		mCommandBuffer->pushConstants(fb->GetRenderPassManager()->GetPipelineLayout(mPipelineKey.ShaderKey.UseLevelMesh, mUniforms.sz), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, (uint32_t)sizeof(PushConstants), (uint32_t)mUniforms.sz, mUniforms.addr);
+		//thanks khronos /s
+		size_t sz = sizeof(PushConstants) + mUniforms.sz;
+
+		if(buffer.Size() < sz)
+		{
+			buffer.Resize(sz);
+		}
+
+		memcpy(buffer.Data(), &mPushConstants, sizeof(PushConstants));
+		memcpy(buffer.Data() + sizeof(PushConstants), mUniforms.addr, mUniforms.sz);
+
+		mCommandBuffer->pushConstants(fb->GetRenderPassManager()->GetPipelineLayout(mPipelineKey.ShaderKey.UseLevelMesh, mUniforms.sz), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sz, buffer.Data());
+	}
+	else
+	{
+		mCommandBuffer->pushConstants(fb->GetRenderPassManager()->GetPipelineLayout(mPipelineKey.ShaderKey.UseLevelMesh, mUniforms.sz), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, (uint32_t)sizeof(PushConstants), &mPushConstants);
 	}
 }
 
@@ -1062,7 +1079,7 @@ void VkRenderState::GetQueryResults(int queryStart, int queryCount, TArray<bool>
 
 	mQueryResultsBuffer.Resize(queryCount);
 	VkResult result = vkGetQueryPoolResults(fb->GetDevice()->device, mRSBuffers->OcclusionQuery.QueryPool->pool, queryStart, queryCount, mQueryResultsBuffer.Size() * sizeof(uint32_t), mQueryResultsBuffer.Data(), sizeof(uint32_t), VK_QUERY_RESULT_WAIT_BIT);
-	CheckVulkanError(result, "Could not query occlusion query results");
+	fb->GetDevice()->CheckVulkanError(result, "Could not query occlusion query results");
 	if (result == VK_NOT_READY)
 		VulkanError("Occlusion query results returned VK_NOT_READY!");
 
@@ -1091,6 +1108,7 @@ void VkRenderState::ApplyLevelMeshPipeline(VulkanCommandBuffer* cmdbuffer, VkPip
 	pipelineKey.ShaderKey.UseShadowmap = gl_light_shadows == 1;
 	pipelineKey.ShaderKey.UseRaytrace = gl_light_shadows >= 2;
 	pipelineKey.ShaderKey.UseRaytracePrecise = gl_light_shadows >= 3;
+	pipelineKey.ShaderKey.PreciseMidtextureTrace = gl_precise_midtextures_trace;
 	pipelineKey.ShaderKey.ShadowmapFilter = std::clamp(int(gl_light_shadow_filter), 0, 15);
 
 	pipelineKey.ShaderKey.GBufferPass = mRenderTarget.DrawBuffers > 1;

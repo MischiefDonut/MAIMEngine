@@ -6,21 +6,17 @@
 #include "glslang/glslang/Public/ResourceLimits.h"
 #include "glslang/spirv/GlslangToSpv.h"
 
-void ShaderBuilder::Init()
+void GLSLCompiler::Init()
 {
 	ShInitialize();
 }
 
-void ShaderBuilder::Deinit()
+void GLSLCompiler::Deinit()
 {
 	ShFinalize();
 }
 
-ShaderBuilder::ShaderBuilder()
-{
-}
-
-ShaderBuilder& ShaderBuilder::Type(ShaderType type)
+GLSLCompiler& GLSLCompiler::Type(ShaderType type)
 {
 	switch (type)
 	{
@@ -34,34 +30,34 @@ ShaderBuilder& ShaderBuilder::Type(ShaderType type)
 	return *this;
 }
 
-ShaderBuilder& ShaderBuilder::AddSource(const std::string& name, const std::string& code)
+GLSLCompiler& GLSLCompiler::AddSource(const std::string& name, const std::string& code)
 {
 	sources.push_back({ name, code });
 	return *this;
 }
 
-ShaderBuilder& ShaderBuilder::OnIncludeSystem(std::function<ShaderIncludeResult(std::string headerName, std::string includerName, size_t inclusionDepth)> onIncludeSystem)
+GLSLCompiler& GLSLCompiler::OnIncludeSystem(std::function<ShaderIncludeResult(std::string headerName, std::string includerName, size_t inclusionDepth)> onIncludeSystem)
 {
 	this->onIncludeSystem = std::move(onIncludeSystem);
 	return *this;
 }
 
-ShaderBuilder& ShaderBuilder::OnIncludeLocal(std::function<ShaderIncludeResult(std::string headerName, std::string includerName, size_t inclusionDepth)> onIncludeLocal)
+GLSLCompiler& GLSLCompiler::OnIncludeLocal(std::function<ShaderIncludeResult(std::string headerName, std::string includerName, size_t inclusionDepth)> onIncludeLocal)
 {
 	this->onIncludeLocal = std::move(onIncludeLocal);
 	return *this;
 }
 
-class ShaderBuilderIncluderImpl : public glslang::TShader::Includer
+class GLSLCompilerIncluderImpl : public glslang::TShader::Includer
 {
 public:
-	ShaderBuilderIncluderImpl(ShaderBuilder* shaderBuilder) : shaderBuilder(shaderBuilder)
+	GLSLCompilerIncluderImpl(GLSLCompiler* compiler) : compiler(compiler)
 	{
 	}
 
 	IncludeResult* includeSystem(const char* headerName, const char* includerName, size_t inclusionDepth) override
 	{
-		if (!shaderBuilder->onIncludeSystem)
+		if (!compiler->onIncludeSystem)
 		{
 			return nullptr;
 		}
@@ -71,7 +67,7 @@ public:
 			std::unique_ptr<ShaderIncludeResult> result;
 			try
 			{
-				result = std::make_unique<ShaderIncludeResult>(shaderBuilder->onIncludeSystem(headerName, includerName, inclusionDepth));
+				result = std::make_unique<ShaderIncludeResult>(compiler->onIncludeSystem(headerName, includerName, inclusionDepth));
 			}
 			catch (const std::exception& e)
 			{
@@ -95,7 +91,7 @@ public:
 
 	IncludeResult* includeLocal(const char* headerName, const char* includerName, size_t inclusionDepth) override
 	{
-		if (!shaderBuilder->onIncludeLocal)
+		if (!compiler->onIncludeLocal)
 		{
 			return nullptr;
 		}
@@ -105,7 +101,7 @@ public:
 			std::unique_ptr<ShaderIncludeResult> result;
 			try
 			{
-				result = std::make_unique<ShaderIncludeResult>(shaderBuilder->onIncludeLocal(headerName, includerName, inclusionDepth));
+				result = std::make_unique<ShaderIncludeResult>(compiler->onIncludeLocal(headerName, includerName, inclusionDepth));
 			}
 			catch (const std::exception& e)
 			{
@@ -137,10 +133,15 @@ public:
 	}
 
 private:
-	ShaderBuilder* shaderBuilder = nullptr;
+	GLSLCompiler* compiler = nullptr;
 };
 
-std::unique_ptr<VulkanShader> ShaderBuilder::Create(const char *shadername, VulkanDevice *device)
+std::vector<uint32_t> GLSLCompiler::Compile(VulkanDevice* device)
+{
+	return Compile(device->Instance->ApiVersion);
+}
+
+std::vector<uint32_t> GLSLCompiler::Compile(uint32_t apiVersion)
 {
 	EShLanguage stage = (EShLanguage)this->stage;
 
@@ -156,22 +157,23 @@ std::unique_ptr<VulkanShader> ShaderBuilder::Create(const char *shadername, Vulk
 	glslang::TShader shader(stage);
 	shader.setStringsWithLengthsAndNames(sourcesC.data(), lengthsC.data(), namesC.data(), (int)sources.size());
 	shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 100);
-    if (device->Instance->ApiVersion >= VK_API_VERSION_1_2)
-    {
-        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2);
-        shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_4);
-    }
-    else
-    {
-        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
-        shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
-    }
+	if (apiVersion >= VK_API_VERSION_1_2)
+	{
+		shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2);
+		shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_4);
+	}
+	else
+	{
+		shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
+		shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+	}
 
-	ShaderBuilderIncluderImpl includer(this);
+	GLSLCompilerIncluderImpl includer(this);
 	bool compileSuccess = shader.parse(GetDefaultResources(), 110, false, EShMsgVulkanRules, includer);
 	if (!compileSuccess)
 	{
 		VulkanError((std::string("Shader compile failed: ") + shader.getInfoLog()).c_str());
+		return {};
 	}
 
 	glslang::TProgram program;
@@ -180,12 +182,14 @@ std::unique_ptr<VulkanShader> ShaderBuilder::Create(const char *shadername, Vulk
 	if (!linkSuccess)
 	{
 		VulkanError((std::string("Shader link failed: ") + program.getInfoLog()).c_str());
+		return {};
 	}
 
-	glslang::TIntermediate *intermediate = program.getIntermediate(stage);
+	glslang::TIntermediate* intermediate = program.getIntermediate(stage);
 	if (!intermediate)
 	{
 		VulkanError("Internal shader compiler error");
+		return {};
 	}
 
 	glslang::SpvOptions spvOptions;
@@ -193,14 +197,20 @@ std::unique_ptr<VulkanShader> ShaderBuilder::Create(const char *shadername, Vulk
 	spvOptions.disableOptimizer = false;
 	spvOptions.optimizeSize = true;
 
-	std::vector<unsigned int> spirv;
+	std::vector<uint32_t> spirv;
 	spv::SpvBuildLogger logger;
 	glslang::GlslangToSpv(*intermediate, spirv, &logger, &spvOptions);
+	return spirv;
+}
 
+/////////////////////////////////////////////////////////////////////////////
+
+std::unique_ptr<VulkanShader> ShaderBuilder::Create(const char *shadername, VulkanDevice *device)
+{
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	createInfo.codeSize = spirv.size() * sizeof(unsigned int);
-	createInfo.pCode = spirv.data();
+	createInfo.codeSize = code.size() * sizeof(uint32_t);
+	createInfo.pCode = code.data();
 
 	VkShaderModule shaderModule;
 	VkResult result = vkCreateShaderModule(device->device, &createInfo, nullptr, &shaderModule);
@@ -358,7 +368,7 @@ std::unique_ptr<VulkanImage> ImageBuilder::Create(VulkanDevice* device, VkDevice
 	VmaAllocation allocation;
 
 	VkResult result = vmaCreateImage(device->allocator, &imageInfo, &allocInfo, &image, &allocation, nullptr);
-	CheckVulkanError(result, "Could not create vulkan image");
+	device->CheckVulkanError(result, "Could not create vulkan image");
 
 	if (allocatedBytes != nullptr)
 	{
@@ -423,7 +433,7 @@ std::unique_ptr<VulkanImageView> ImageViewBuilder::Create(VulkanDevice* device)
 {
 	VkImageView view;
 	VkResult result = vkCreateImageView(device->device, &viewInfo, nullptr, &view);
-	CheckVulkanError(result, "Could not create texture image view");
+	device->CheckVulkanError(result, "Could not create texture image view");
 
 	auto obj = std::make_unique<VulkanImageView>(device, view);
 	if (debugName)
@@ -510,7 +520,7 @@ std::unique_ptr<VulkanSampler> SamplerBuilder::Create(VulkanDevice* device)
 {
 	VkSampler sampler;
 	VkResult result = vkCreateSampler(device->device, &samplerInfo, nullptr, &sampler);
-	CheckVulkanError(result, "Could not create texture sampler");
+	device->CheckVulkanError(result, "Could not create texture sampler");
 	auto obj = std::make_unique<VulkanSampler>(device, sampler);
 	if (debugName)
 		obj->SetDebugName(debugName);
@@ -561,12 +571,12 @@ std::unique_ptr<VulkanBuffer> BufferBuilder::Create(VulkanDevice* device)
 	if (minAlignment == 0)
 	{
 		VkResult result = vmaCreateBuffer(device->allocator, &bufferInfo, &allocInfo, &buffer, &allocation, nullptr);
-		CheckVulkanError(result, "Could not allocate memory for vulkan buffer");
+		device->CheckVulkanError(result, "Could not allocate memory for vulkan buffer");
 	}
 	else
 	{
 		VkResult result = vmaCreateBufferWithAlignment(device->allocator, &bufferInfo, &allocInfo, minAlignment, &buffer, &allocation, nullptr);
-		CheckVulkanError(result, "Could not allocate memory for vulkan buffer");
+		device->CheckVulkanError(result, "Could not allocate memory for vulkan buffer");
 	}
 
 	auto obj = std::make_unique<VulkanBuffer>(device, buffer, allocation, (size_t)bufferInfo.size);
@@ -694,7 +704,7 @@ std::unique_ptr<VulkanDescriptorSetLayout> DescriptorSetLayoutBuilder::Create(Vu
 {
 	VkDescriptorSetLayout layout;
 	VkResult result = vkCreateDescriptorSetLayout(device->device, &layoutInfo, nullptr, &layout);
-	CheckVulkanError(result, "Could not create descriptor set layout");
+	device->CheckVulkanError(result, "Could not create descriptor set layout");
 	auto obj = std::make_unique<VulkanDescriptorSetLayout>(device, layout);
 	if (debugName)
 		obj->SetDebugName(debugName);
@@ -738,7 +748,7 @@ std::unique_ptr<VulkanDescriptorPool> DescriptorPoolBuilder::Create(VulkanDevice
 {
 	VkDescriptorPool descriptorPool;
 	VkResult result = vkCreateDescriptorPool(device->device, &poolInfo, nullptr, &descriptorPool);
-	CheckVulkanError(result, "Could not create descriptor pool");
+	device->CheckVulkanError(result, "Could not create descriptor pool");
 	auto obj = std::make_unique<VulkanDescriptorPool>(device, descriptorPool);
 	if (debugName)
 		obj->SetDebugName(debugName);
@@ -764,7 +774,7 @@ std::unique_ptr<VulkanQueryPool> QueryPoolBuilder::Create(VulkanDevice* device)
 {
 	VkQueryPool queryPool;
 	VkResult result = vkCreateQueryPool(device->device, &poolInfo, nullptr, &queryPool);
-	CheckVulkanError(result, "Could not create query pool");
+	device->CheckVulkanError(result, "Could not create query pool");
 	auto obj = std::make_unique<VulkanQueryPool>(device, queryPool);
 	if (debugName)
 		obj->SetDebugName(debugName);
@@ -814,7 +824,7 @@ std::unique_ptr<VulkanFramebuffer> FramebufferBuilder::Create(VulkanDevice* devi
 {
 	VkFramebuffer framebuffer = 0;
 	VkResult result = vkCreateFramebuffer(device->device, &framebufferInfo, nullptr, &framebuffer);
-	CheckVulkanError(result, "Could not create framebuffer");
+	device->CheckVulkanError(result, "Could not create framebuffer");
 	auto obj = std::make_unique<VulkanFramebuffer>(device, framebuffer);
 	if (debugName)
 		obj->SetDebugName(debugName);
@@ -1141,7 +1151,7 @@ std::unique_ptr<VulkanPipeline> GraphicsPipelineBuilder::Create(VulkanDevice* de
 
 	VkPipeline pipeline = 0;
 	VkResult result = vkCreateGraphicsPipelines(device->device, cache ? cache->cache : VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline);
-	CheckVulkanError(result, "Could not create graphics pipeline");
+	device->CheckVulkanError(result, "Could not create graphics pipeline");
 	auto obj = std::make_unique<VulkanPipeline>(device, pipeline);
 	if (debugName)
 		obj->SetDebugName(debugName);
@@ -1179,7 +1189,7 @@ std::unique_ptr<VulkanPipelineLayout> PipelineLayoutBuilder::Create(VulkanDevice
 {
 	VkPipelineLayout pipelineLayout;
 	VkResult result = vkCreatePipelineLayout(device->device, &pipelineLayoutInfo, nullptr, &pipelineLayout);
-	CheckVulkanError(result, "Could not create pipeline layout");
+	device->CheckVulkanError(result, "Could not create pipeline layout");
 	auto obj = std::make_unique<VulkanPipelineLayout>(device, pipelineLayout);
 	if (debugName)
 		obj->SetDebugName(debugName);
@@ -1227,7 +1237,7 @@ std::unique_ptr<VulkanPipelineCache> PipelineCacheBuilder::Create(VulkanDevice* 
 
 	VkPipelineCache pipelineCache;
 	VkResult result = vkCreatePipelineCache(device->device, &pipelineCacheInfo, nullptr, &pipelineCache);
-	CheckVulkanError(result, "Could not create pipeline cache");
+	device->CheckVulkanError(result, "Could not create pipeline cache");
 	auto obj = std::make_unique<VulkanPipelineCache>(device, pipelineCache);
 	if (debugName)
 		obj->SetDebugName(debugName);
@@ -1331,7 +1341,7 @@ std::unique_ptr<VulkanRenderPass> RenderPassBuilder::Create(VulkanDevice* device
 {
 	VkRenderPass renderPass = 0;
 	VkResult result = vkCreateRenderPass(device->device, &renderPassInfo, nullptr, &renderPass);
-	CheckVulkanError(result, "Could not create render pass");
+	device->CheckVulkanError(result, "Could not create render pass");
 	auto obj = std::make_unique<VulkanRenderPass>(device, renderPass);
 	if (debugName)
 		obj->SetDebugName(debugName);
@@ -1474,7 +1484,7 @@ QueueSubmit& QueueSubmit::AddSignal(VulkanSemaphore* semaphore)
 void QueueSubmit::Execute(VulkanDevice* device, VkQueue queue, VulkanFence* fence)
 {
 	VkResult result = vkQueueSubmit(device->GraphicsQueue, 1, &submitInfo, fence ? fence->fence : VK_NULL_HANDLE);
-	CheckVulkanError(result, "Could not submit command buffer");
+	device->CheckVulkanError(result, "Could not submit command buffer");
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1679,6 +1689,9 @@ VulkanDeviceBuilder::VulkanDeviceBuilder()
 	OptionalExtension(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 	OptionalExtension(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
 	OptionalExtension(VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME);
+
+	// Extensions desired for debugging
+	OptionalExtension(VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
 }
 
 VulkanDeviceBuilder& VulkanDeviceBuilder::RequireExtension(const std::string& extensionName)
@@ -1780,6 +1793,7 @@ std::vector<VulkanCompatibleDevice> VulkanDeviceBuilder::FindDevices(const std::
 		enabledFeatures.DescriptorIndexing.descriptorBindingSampledImageUpdateAfterBind = deviceFeatures.DescriptorIndexing.descriptorBindingSampledImageUpdateAfterBind;
 		enabledFeatures.DescriptorIndexing.descriptorBindingVariableDescriptorCount = deviceFeatures.DescriptorIndexing.descriptorBindingVariableDescriptorCount;
 		enabledFeatures.DescriptorIndexing.shaderSampledImageArrayNonUniformIndexing = deviceFeatures.DescriptorIndexing.shaderSampledImageArrayNonUniformIndexing;
+		enabledFeatures.Fault.deviceFault = deviceFeatures.Fault.deviceFault;
 
 		// Figure out which queue can present
 		if (surface)

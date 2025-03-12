@@ -175,6 +175,9 @@ void VkDescriptorSetManager::ResetHWTextureSets()
 
 	// Slot zero always needs to be the null texture
 	AddBindlessTextureIndex(fb->GetTextureManager()->GetNullTextureView(), fb->GetSamplerManager()->Get(CLAMP_XY_NOMIP));
+
+	// And slot 1 is always our BRDF LUT texture
+	AddBindlessTextureIndex(fb->GetTextureManager()->GetBrdfLutTextureView(), fb->GetSamplerManager()->Get(CLAMP_XY_NOMIP));
 }
 
 void VkDescriptorSetManager::AddMaterial(VkMaterial* texture)
@@ -345,7 +348,8 @@ void VkDescriptorSetManager::CreateLevelMeshPool()
 void VkDescriptorSetManager::CreateRSBufferPool()
 {
 	RSBuffer.Pool = DescriptorPoolBuilder()
-		.AddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 5)
+		.AddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 4)
+		.AddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1)
 		.AddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1)
 		.MaxSets(1)
 		.DebugName("VkDescriptorSetManager.RSBuffer.Pool")
@@ -359,10 +363,11 @@ void VkDescriptorSetManager::CreateFixedPool()
 	if (fb->IsRayQueryEnabled())
 	{
 		poolbuilder.AddPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1 * MaxFixedSets);
+		poolbuilder.AddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 5 * MaxFixedSets);
 	}
 	else
 	{
-		poolbuilder.AddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 * MaxFixedSets);
+		poolbuilder.AddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 6 * MaxFixedSets);
 	}
 	poolbuilder.MaxSets(MaxFixedSets);
 	poolbuilder.DebugName("VkDescriptorSetManager.Fixed.Pool");

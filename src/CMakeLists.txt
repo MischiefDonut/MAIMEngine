@@ -186,7 +186,11 @@ endif()
 # Set up flags for MSVC
 if (MSVC)
 	# /we4715 turns "'function' : not all control paths return a value" as it should be!!!!!!!!one1!
-	set( CMAKE_CXX_FLAGS "/MP /we4715 ${CMAKE_CXX_FLAGS}" )
+	set(CMAKE_CXX_FLAGS "/MP /we4715 ${CMAKE_CXX_FLAGS}")
+	if(X64)
+		# CPUs that don't support AVX2 are going to be too slow to run this properly anyway
+		set(CMAKE_CXX_FLAGS "/arch:AVX2 ${CMAKE_CXX_FLAGS}")
+	endif(X64)
 endif (MSVC)
 
 # Set up flags for GCC
@@ -752,6 +756,7 @@ set (VULKAN_SOURCES
 	common/rendering/vulkan/pipelines/vk_pprenderpass.cpp
 	common/rendering/vulkan/shaders/vk_shader.cpp
 	common/rendering/vulkan/shaders/vk_ppshader.cpp
+	common/rendering/vulkan/shaders/vk_shadercache.cpp
 	common/rendering/vulkan/textures/vk_hwtexture.cpp
 	common/rendering/vulkan/textures/vk_pptexture.cpp
 	common/rendering/vulkan/textures/vk_imagetransition.cpp
@@ -889,6 +894,7 @@ set (PCH_SOURCES
 	rendering/hwrenderer/hw_vertexbuilder.cpp
 	rendering/hwrenderer/doom_aabbtree.cpp
 	rendering/hwrenderer/doom_levelmesh.cpp
+	rendering/hwrenderer/doom_lightprobes.cpp
 	rendering/hwrenderer/hw_models.cpp
 	rendering/hwrenderer/hw_precache.cpp
 	rendering/hwrenderer/scene/hw_lighting.cpp
@@ -1122,6 +1128,7 @@ set (PCH_SOURCES
 	common/rendering/hwrenderer/data/hw_collision.cpp
 	common/rendering/hwrenderer/data/hw_levelmesh.cpp
 	common/rendering/hwrenderer/data/hw_meshbuilder.cpp
+	common/rendering/hwrenderer/data/hw_lightprobe.cpp
 	common/rendering/hwrenderer/postprocessing/hw_postprocessshader.cpp
 	common/rendering/hwrenderer/postprocessing/hw_postprocess.cpp
 	common/rendering/hwrenderer/postprocessing/hw_postprocess_cvars.cpp

@@ -16,6 +16,7 @@ class VkRenderPassManager;
 class VkFramebufferManager;
 class VkLevelMesh;
 class VkLightmapper;
+class VkLightprober;
 class VkRenderState;
 class VkStreamBuffer;
 class VkHardwareDataBuffer;
@@ -24,6 +25,7 @@ class VkRenderBuffers;
 class VkPostprocess;
 class VkPipelineKey;
 class VkRenderPassSetup;
+class VkShaderCache;
 
 class VulkanRenderDevice : public SystemBaseFrameBuffer
 {
@@ -32,6 +34,7 @@ public:
 	~VulkanRenderDevice();
 
 	VulkanDevice* GetDevice() { return mDevice.get(); }
+	VkShaderCache* GetShaderCache() { return mShaderCache.get(); }
 	VkCommandBufferManager* GetCommands() { return mCommands.get(); }
 	VkShaderManager *GetShaderManager() { return mShaderManager.get(); }
 	VkSamplerManager *GetSamplerManager() { return mSamplerManager.get(); }
@@ -42,6 +45,7 @@ public:
 	VkRenderPassManager *GetRenderPassManager() { return mRenderPassManager.get(); }
 	VkLevelMesh* GetLevelMesh() { return mLevelMesh.get(); }
 	VkLightmapper* GetLightmapper() { return mLightmapper.get(); }
+	VkLightprober* GetLightproper() { return mLightprober.get(); }
 	VkRenderState *GetRenderState() { return mRenderState.get(); }
 	VkPostprocess *GetPostprocess() { return mPostprocess.get(); }
 	VkRenderBuffers *GetBuffers() { return mActiveRenderBuffers; }
@@ -102,12 +106,15 @@ public:
 
 private:
 	void RenderTextureView(FCanvasTexture* tex, std::function<void(IntRect &)> renderFunc) override;
+	void RenderEnvironmentMap(std::function<void(IntRect& bounds, int side)> renderFunc, TArrayView<uint16_t>& irradianceMap, TArrayView<uint16_t>& prefilterMap) override;
+	void UploadEnvironmentMaps(int cubemapCount, const TArray<uint16_t>& irradianceMaps, const TArray<uint16_t>& prefilterMaps) override;
 	void PrintStartupLog();
 	void CopyScreenToBuffer(int w, int h, uint8_t *data) override;
 
 	bool HasSurface = false;
 
 	std::shared_ptr<VulkanDevice> mDevice;
+	std::unique_ptr<VkShaderCache> mShaderCache;
 	std::unique_ptr<VkCommandBufferManager> mCommands;
 	std::unique_ptr<VkBufferManager> mBufferManager;
 	std::unique_ptr<VkSamplerManager> mSamplerManager;
@@ -121,6 +128,7 @@ private:
 	std::unique_ptr<VkRenderPassManager> mRenderPassManager;
 	std::unique_ptr<VkLevelMesh> mLevelMesh;
 	std::unique_ptr<VkLightmapper> mLightmapper;
+	std::unique_ptr<VkLightprober> mLightprober;
 	std::unique_ptr<VkRenderState> mRenderState;
 
 	VkRenderBuffers *mActiveRenderBuffers = nullptr;
@@ -130,6 +138,7 @@ private:
 
 	LevelMesh* levelMesh = nullptr;
 	bool levelMeshChanged = true;
+	std::unique_ptr<LevelMesh> NullMesh;
 
 	int levelVertexFormatIndex = -1;
 	TArray<VkPipelineKey> levelMeshPipelineKeys;

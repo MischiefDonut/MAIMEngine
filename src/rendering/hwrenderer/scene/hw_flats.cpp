@@ -49,6 +49,8 @@
 #include "texturemanager.h"
 #include "hw_flatdispatcher.h"
 
+EXTERN_CVAR(Bool, lm_dynlights);
+
 #ifdef _DEBUG
 CVAR(Int, gl_breaksec, -1, 0)
 #endif
@@ -209,7 +211,7 @@ void HWFlat::SetupLights(HWFlatDispatcher *di, FRenderState& state, FLightNode *
 
 void HWFlat::DrawSubsectors(HWFlatDispatcher *di, FRenderState &state)
 {
-	if (di->Level->HasDynamicLights && !di->isFullbrightScene())
+	if (di->Level->HasDynamicLights && !di->isFullbrightScene() && !lm_dynlights)
 	{
 		SetupLights(di, state, section->lighthead, lightdata, sector->PortalGroup);
 	}
@@ -328,6 +330,8 @@ void HWFlat::DrawFlat(HWFlatDispatcher *di, FRenderState &state, bool translucen
 	int rel = getExtraLight();
 
 	state.SetNormal(plane.plane.Normal().X, plane.plane.Normal().Z, plane.plane.Normal().Y);
+	double zshift = (plane.plane.Normal().Z > 0.0 ? 0.01f : -0.01f); // The HWPlaneMirrorPortal::DrawPortalStencil() z-fights with flats
+	state.SetLightProbeIndex(sector->lightProbe.index);
 
 	SetColor(state, di->Level, di->lightmode, lightlevel, rel, di->isFullbrightScene(), Colormap, alpha);
 	SetFog(state, di->Level, di->lightmode, lightlevel, rel, di->isFullbrightScene(), &Colormap, false, di->di ? di->di->drawctx->portalState.inskybox : false);
@@ -381,7 +385,18 @@ void HWFlat::DrawFlat(HWFlatDispatcher *di, FRenderState &state, bool translucen
 			else state.AlphaFunc(Alpha_GEqual, 0.f);
 			state.SetMaterial(texture, UF_Texture, 0, CLAMP_NONE, NO_TRANSLATION, -1);
 			bool texmatrix = SetPlaneTextureRotation(state, &plane, texture);
+			if (di->di && di->di->Viewpoint.IsAllowedOoB())
+			{
+				di->di->VPUniforms.mViewMatrix.translate(0.0, zshift, 0.0);
+				di->di->vpIndex = state.SetViewpoint(di->di->VPUniforms);
+				// screen->mViewpoints->SetViewpoint(state, &di->di->VPUniforms);
+			}
 			DrawSubsectors(di, state);
+			if (di->di && di->di->Viewpoint.IsAllowedOoB())
+			{
+				di->di->VPUniforms.mViewMatrix.translate(0.0, -zshift, 0.0);
+				di->di->vpIndex = state.SetViewpoint(di->di->VPUniforms);
+			}
 			if (texmatrix)
 				state.SetTextureMatrix(VSMatrix::identity());
 		}
@@ -554,7 +569,7 @@ void HWFlat::ProcessSector(HWFlatDispatcher *di, FRenderState& state, sector_t *
 	//
 	//
 	//
-	if (((which & SSRF_RENDERFLOOR) && (!di->di || (((frontsector->floorplane.ZatPoint(vp->Pos) <= vp->Pos.Z) && (!section || !(section->flags & FSection::DONTRENDERFLOOR)))))) && !(di->di && vp->IsOrtho() && (vp->PitchSin < 0.0)))
+	if ((which & SSRF_RENDERFLOOR) && ((di->di && vp->IsOrtho()) ? vp->ViewVector3D.dot(frontsector->floorplane.Normal()) < 0.0 : (!di->di || (frontsector->floorplane.ZatPoint(vp->Pos) <= vp->Pos.Z))) && (!section || !(section->flags & FSection::DONTRENDERFLOOR)))
 	{
 		// process the original floor first.
 
@@ -612,7 +627,7 @@ void HWFlat::ProcessSector(HWFlatDispatcher *di, FRenderState& state, sector_t *
 	//
 	// 
 	//
-	if (((which & SSRF_RENDERCEILING) && ((!di->di || ((frontsector->ceilingplane.ZatPoint(vp->Pos) >= vp->Pos.Z) && (!section || !(section->flags & FSection::DONTRENDERCEILING)))))) && !(di->di && vp->IsOrtho() && (vp->PitchSin > 0.0)))
+	if ((which & SSRF_RENDERCEILING) && ((di->di && vp->IsOrtho()) ? vp->ViewVector3D.dot(frontsector->ceilingplane.Normal()) < 0.0 : (!di->di || (frontsector->ceilingplane.ZatPoint(vp->Pos) >= vp->Pos.Z))) && (!section || !(section->flags & FSection::DONTRENDERCEILING)))
 	{
 		// process the original ceiling first.
 
@@ -697,7 +712,7 @@ void HWFlat::ProcessSector(HWFlatDispatcher *di, FRenderState& state, sector_t *
 					double ff_top = rover->top.plane->ZatPoint(sector->centerspot);
 					if (ff_top < lastceilingheight)
 					{
-						if (!di->di || vp->Pos.Z <= rover->top.plane->ZatPoint(vp->Pos))
+						if (!di->di || (vp->IsOrtho() ? vp->ViewVector3D.dot(rover->top.plane->Normal()) > 0.0 : vp->Pos.Z <= rover->top.plane->ZatPoint(vp->Pos)))
 						{
 							SetFrom3DFloor(rover, true, !!(rover->flags&FF_FOG));
 							Colormap.FadeColor = frontsector->Colormap.FadeColor;
@@ -711,7 +726,7 @@ void HWFlat::ProcessSector(HWFlatDispatcher *di, FRenderState& state, sector_t *
 					double ff_bottom = rover->bottom.plane->ZatPoint(sector->centerspot);
 					if (ff_bottom < lastceilingheight)
 					{
-						if (!di->di || vp->Pos.Z <= rover->bottom.plane->ZatPoint(vp->Pos))
+						if (!di->di || (vp->IsOrtho() ? vp->ViewVector3D.dot(rover->bottom.plane->Normal()) > 0.0 : vp->Pos.Z <= rover->bottom.plane->ZatPoint(vp->Pos)))
 						{
 							SetFrom3DFloor(rover, false, !(rover->flags&FF_FOG));
 							Colormap.FadeColor = frontsector->Colormap.FadeColor;
@@ -737,7 +752,7 @@ void HWFlat::ProcessSector(HWFlatDispatcher *di, FRenderState& state, sector_t *
 					double ff_bottom = rover->bottom.plane->ZatPoint(sector->centerspot);
 					if (ff_bottom > lastfloorheight || (rover->flags&FF_FIX))
 					{
-						if (!di->di || vp->Pos.Z >= rover->bottom.plane->ZatPoint(vp->Pos))
+						if (!di->di || (vp->IsOrtho() ? vp->ViewVector3D.dot(rover->bottom.plane->Normal()) > 0.0 : vp->Pos.Z >= rover->bottom.plane->ZatPoint(vp->Pos)))
 						{
 							SetFrom3DFloor(rover, false, !(rover->flags&FF_FOG));
 							Colormap.FadeColor = frontsector->Colormap.FadeColor;
@@ -758,7 +773,7 @@ void HWFlat::ProcessSector(HWFlatDispatcher *di, FRenderState& state, sector_t *
 					double ff_top = rover->top.plane->ZatPoint(sector->centerspot);
 					if (ff_top > lastfloorheight)
 					{
-						if (!di->di || vp->Pos.Z >= rover->top.plane->ZatPoint(vp->Pos))
+						if (!di->di || (vp->IsOrtho() ? vp->ViewVector3D.dot(rover->top.plane->Normal()) > 0.0 : vp->Pos.Z >= rover->top.plane->ZatPoint(vp->Pos)))
 						{
 							SetFrom3DFloor(rover, true, !!(rover->flags&FF_FOG));
 							Colormap.FadeColor = frontsector->Colormap.FadeColor;

@@ -44,6 +44,7 @@
 
 #include "hwrenderer/data/buffers.h"
 #include "hwrenderer/data/hw_levelmesh.h"
+#include "hwrenderer/data/hw_lightprobe.h"
 
 // Some more or less basic data types
 // we depend on.
@@ -785,6 +786,8 @@ struct sector_t
 	int	healthceilinggroup;
 	int	health3dgroup;
 
+	LightProbeTarget lightProbe; // TODO split individual flats in the sector including 3d floors
+
 	// Member functions
 
 private:
@@ -1008,15 +1011,7 @@ public:
 
 		if (val != old)
 		{
-			//not sure actually what TexZ does, so changing passing this as "Other"
-			if(pos)
-			{
-				LevelMeshUpdater->SectorChangedOther(this);
-			}
-			else
-			{
-				LevelMeshUpdater->SectorChangedOther(this);
-			}
+			LevelMeshUpdater->SectorChangedTexZ(this);
 		}
 	}
 
@@ -1231,6 +1226,9 @@ enum
 	WALLF_ABSLIGHTING_BOTTOM 	= WALLF_ABSLIGHTING_TIER << 2,	// Bottom tier light is absolute instead of relative
 
 	WALLF_DITHERTRANS			= 8192,	// Render with dithering transparency shader (gets reset every frame)
+	WALLF_DITHERTRANS_TOP		= WALLF_DITHERTRANS << 0,	// Top tier (gets reset every frame)
+	WALLF_DITHERTRANS_MID		= WALLF_DITHERTRANS << 1,	// Mid tier (gets reset every frame)
+	WALLF_DITHERTRANS_BOTTOM	= WALLF_DITHERTRANS << 2,	// Bottom tier (gets reset every frame)
 };
 
 struct side_t
@@ -1303,9 +1301,12 @@ struct side_t
 	int			UDMFIndex;		// needed to access custom UDMF fields which are stored in loading order.
 	FLightNode * lighthead;		// all dynamic lights that may affect this wall
 	TArrayView<int> LightmapTiles; // all lightmap tiles belonging to this sidedef
+	LightProbeTarget lightProbe; // TODO use different probe per each part (and 3D floors)
 	seg_t **segs;	// all segs belonging to this sidedef in ascending order. Used for precise rendering
 	int numsegs;
 	int sidenum;
+
+	int dithertranscount;
 
 	int GetLightLevel (bool foggy, int baselight, int which, bool is3dlight=false, int *pfakecontrast_usedbygzdoom=NULL) const;
 

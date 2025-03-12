@@ -58,6 +58,8 @@
 #include "doom_levelmesh.h"
 #include "p_visualthinker.h"
 
+#include "common/rendering/hwrenderer/data/hw_lightprobe.h"
+
 //============================================================================
 //
 // This is used to mark processed portals for some collection functions.
@@ -253,7 +255,7 @@ public:
 	// g_Game
 	void PlayerReborn (int player);
 	bool CheckSpot (int playernum, FPlayerStart *mthing);
-	void DoReborn (int playernum, bool freshbot);
+	void DoReborn (int playernum, bool force = false);
 	void QueueBody (AActor *body);
 	double PlayersRangeFromSpot (FPlayerStart *spot);
 	FPlayerStart *SelectFarthestDeathmatchSpot (size_t selections);
@@ -427,11 +429,6 @@ public:
 	DThinker *CreateThinker(PClass *cls, int statnum = STAT_DEFAULT)
 	{
 		DThinker *thinker = static_cast<DThinker*>(cls->CreateNew());
-		if (statnum && thinker->IsKindOf(RUNTIME_CLASS(DVisualThinker)))
-		{
-			statnum = STAT_VISUALTHINKER;
-		}
-
 		assert(thinker->IsKindOf(RUNTIME_CLASS(DThinker)));
 		thinker->ObjectFlags |= OF_JustSpawned;
 		Thinkers.Link(thinker, statnum);
@@ -491,6 +488,7 @@ public:
 	EventManager *localEventManager = nullptr;
 	DoomLevelAABBTree* aabbTree = nullptr;
 	DoomLevelMesh* levelMesh = nullptr;
+	TArray<LightProbe> lightProbes;
 
 	// [ZZ] Destructible geometry information
 	TMap<int, FHealthGroup> healthGroups;
@@ -711,6 +709,7 @@ public:
 	int			ImpactDecalCount;
 
 	FDynamicLight *lights;
+	DVisualThinker* VisualThinkerHead = nullptr;
 
 	// links to global game objects
 	TArray<TObjPtr<AActor *>> CorpseQueue;

@@ -25,6 +25,8 @@ struct FRenderViewpoint
 	DRotator		Angles;			// Camera angles
 	FRotator		HWAngles;		// Actual rotation angles for the hardware renderer
 	DVector2		ViewVector;		// HWR only: direction the camera is facing.
+	DVector3		ViewVector3D;	// 3D direction the camera is facing.
+	DVector3        OffPos;         // Viewpoint position to use for Ortho and OoB calculations
 	AActor			*ViewActor;		// either the same as camera or nullptr
 	FLevelLocals	*ViewLevel;		// The level this viewpoint is on.
 
@@ -126,8 +128,7 @@ void R_ClearInterpolationPath();
 void R_AddInterpolationPoint(const DVector3a &vec);
 void R_SetViewSize (int blocks);
 void R_SetFOV (FRenderViewpoint &viewpoint, DAngle fov);
-void R_SetupFrame(FRenderViewpoint& viewPoint, const FViewWindow& viewWindow, AActor* const camera);
-void R_SetViewAngle (FRenderViewpoint &viewpoint, const FViewWindow &viewwindow);
+void R_SetupFrame(FRenderViewpoint& viewPoint, const FViewWindow& viewWindow, AActor* const camera, int side = -1);
 
 // Called by startup code.
 void R_Init (void);
