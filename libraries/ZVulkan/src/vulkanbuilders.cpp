@@ -205,7 +205,7 @@ std::vector<uint32_t> GLSLCompiler::Compile(uint32_t apiVersion)
 
 /////////////////////////////////////////////////////////////////////////////
 
-std::unique_ptr<VulkanShader> ShaderBuilder::Create(const char *shadername, VulkanDevice *device)
+std::unique_ptr<VulkanShader> ShaderBuilder::Create(const char* shadername, VulkanDevice* device)
 {
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -892,7 +892,6 @@ ColorBlendAttachmentBuilder& ColorBlendAttachmentBuilder::BlendMode(VkBlendOp op
 
 GraphicsPipelineBuilder::GraphicsPipelineBuilder()
 {
-	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineInfo.pVertexInputState = &vertexInputInfo;
 	pipelineInfo.pInputAssemblyState = &inputAssembly;
 	pipelineInfo.pViewportState = &viewportState;
@@ -905,23 +904,19 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder()
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
 
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.vertexBindingDescriptionCount = 0;
 	vertexInputInfo.pVertexBindingDescriptions = nullptr;
 	vertexInputInfo.vertexAttributeDescriptionCount = 0;
 	vertexInputInfo.pVertexAttributeDescriptions = nullptr;
 
-	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportState.viewportCount = 1;
 	viewportState.pViewports = &viewport;
 	viewportState.scissorCount = 1;
 	viewportState.pScissors = &scissor;
 
-	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
 	depthStencil.minDepthBounds = 0.0f;
@@ -930,7 +925,6 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder()
 	depthStencil.front = {};
 	depthStencil.back = {};
 
-	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterizer.depthClampEnable = VK_FALSE;
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
@@ -942,7 +936,6 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder()
 	rasterizer.depthBiasClamp = 0.0f;
 	rasterizer.depthBiasSlopeFactor = 0.0f;
 
-	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampling.sampleShadingEnable = VK_FALSE;
 	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 	multisampling.minSampleShading = 1.0f;
@@ -950,15 +943,30 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder()
 	multisampling.alphaToCoverageEnable = VK_FALSE;
 	multisampling.alphaToOneEnable = VK_FALSE;
 
-	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlending.logicOpEnable = VK_FALSE;
 	colorBlending.logicOp = VK_LOGIC_OP_COPY;
 	colorBlending.blendConstants[0] = 0.0f;
 	colorBlending.blendConstants[1] = 0.0f;
 	colorBlending.blendConstants[2] = 0.0f;
 	colorBlending.blendConstants[3] = 0.0f;
+}
 
-	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::AddLibrary(VulkanPipeline* pipeline)
+{
+	libraries.push_back(pipeline->pipeline);
+	return *this;
+}
+
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::Flags(VkPipelineCreateFlags flags)
+{
+	pipelineInfo.flags = flags;
+	return *this;
+}
+
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::LibraryFlags(VkGraphicsPipelineLibraryFlagsEXT flags)
+{
+	pipelineLibrary.flags = flags;
+	return *this;
 }
 
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::RasterizationSamples(VkSampleCountFlagBits samples)
@@ -1107,6 +1115,48 @@ GraphicsPipelineBuilder& GraphicsPipelineBuilder::AddFragmentShader(VulkanShader
 	return *this;
 }
 
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::AddConstant(uint32_t constantID, const void* data, size_t size)
+{
+	VkPipelineShaderStageCreateInfo& stage = shaderStages.back();
+	if (!stage.pSpecializationInfo)
+	{
+		specializations.push_back(std::make_unique<ShaderSpecialization>());
+		stage.pSpecializationInfo = &specializations.back()->info;
+	}
+
+	ShaderSpecialization* s = specializations.back().get();
+
+	VkSpecializationMapEntry entry = {};
+	entry.constantID = constantID;
+	entry.offset = (uint32_t)s->data.size();
+	entry.size = (uint32_t)size;
+
+	s->data.insert(s->data.end(), (uint8_t*)data, (uint8_t*)data + size);
+	s->entries.push_back(entry);
+
+	s->info.mapEntryCount = (uint32_t)s->entries.size();
+	s->info.dataSize = (uint32_t)s->data.size();
+	s->info.pMapEntries = s->entries.data();
+	s->info.pData = s->data.data();
+
+	return *this;
+}
+
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::AddConstant(uint32_t constantID, uint32_t value)
+{
+	return AddConstant(constantID, &value, sizeof(uint32_t));
+}
+
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::AddConstant(uint32_t constantID, int32_t value)
+{
+	return AddConstant(constantID, &value, sizeof(int32_t));
+}
+
+GraphicsPipelineBuilder& GraphicsPipelineBuilder::AddConstant(uint32_t constantID, float value)
+{
+	return AddConstant(constantID, &value, sizeof(float));
+}
+
 GraphicsPipelineBuilder& GraphicsPipelineBuilder::AddVertexBufferBinding(int index, size_t stride)
 {
 	VkVertexInputBindingDescription desc = {};
@@ -1148,6 +1198,29 @@ std::unique_ptr<VulkanPipeline> GraphicsPipelineBuilder::Create(VulkanDevice* de
 		colorBlendAttachments.push_back(ColorBlendAttachmentBuilder().Create());
 	colorBlending.pAttachments = colorBlendAttachments.data();
 	colorBlending.attachmentCount = (uint32_t)colorBlendAttachments.size();
+
+	if (!libraries.empty())
+	{
+		auto flags = pipelineInfo.flags;
+		pipelineInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+		pipelineInfo.flags = flags;
+		libraryCreate.libraryCount = (uint32_t)libraries.size();
+		libraryCreate.pLibraries = libraries.data();
+	}
+
+	const void** ppNext = &pipelineInfo.pNext;
+
+	if (libraryCreate.libraryCount > 0 && device->SupportsExtension(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME))
+	{
+		*ppNext = &libraryCreate;
+		ppNext = &libraryCreate.pNext;
+	}
+
+	if (pipelineLibrary.flags != 0 && device->SupportsExtension(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME))
+	{
+		*ppNext = &pipelineLibrary;
+		ppNext = &pipelineLibrary.pNext;
+	}
 
 	VkPipeline pipeline = 0;
 	VkResult result = vkCreateGraphicsPipelines(device->device, cache ? cache->cache : VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline);
@@ -1616,22 +1689,30 @@ VulkanInstanceBuilder& VulkanInstanceBuilder::RequireExtension(const std::string
 	return *this;
 }
 
-VulkanInstanceBuilder& VulkanInstanceBuilder::RequireSurfaceExtensions(bool enable)
+VulkanInstanceBuilder& VulkanInstanceBuilder::RequireExtensions(const std::vector<std::string>& extensions)
 {
-	if (enable)
-	{
-		RequireExtension(VK_KHR_SURFACE_EXTENSION_NAME);
+	for (const auto& ext : extensions)
+		RequireExtension(ext);
+	return *this;
+}
 
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-		RequireExtension(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_MACOS_MVK)
-		RequireExtension(VK_MVK_MACOS_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_XLIB_KHR)
-		RequireExtension(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
-#endif
+VulkanInstanceBuilder& VulkanInstanceBuilder::RequireExtensions(const std::vector<const char*>& extensions)
+{
+	for (const auto& ext : extensions)
+		RequireExtension(ext);
+	return *this;
+}
 
-		OptionalExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME); // For HDR support
-	}
+VulkanInstanceBuilder& VulkanInstanceBuilder::RequireExtensions(const char** extensions, size_t count)
+{
+	for (size_t i = 0; i < count; i++)
+		RequireExtension(extensions[i]);
+	return *this;
+}
+
+VulkanInstanceBuilder& VulkanInstanceBuilder::OptionalSwapchainColorspace()
+{
+	OptionalExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME); // For HDR support
 	return *this;
 }
 
@@ -1654,27 +1735,6 @@ std::shared_ptr<VulkanInstance> VulkanInstanceBuilder::Create()
 
 /////////////////////////////////////////////////////////////////////////////
 
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-
-VulkanSurfaceBuilder::VulkanSurfaceBuilder()
-{
-}
-
-VulkanSurfaceBuilder& VulkanSurfaceBuilder::Win32Window(HWND hwnd)
-{
-	this->hwnd = hwnd;
-	return *this;
-}
-
-std::shared_ptr<VulkanSurface> VulkanSurfaceBuilder::Create(std::shared_ptr<VulkanInstance> instance)
-{
-	return std::make_shared<VulkanSurface>(std::move(instance), hwnd);
-}
-
-#endif
-
-/////////////////////////////////////////////////////////////////////////////
-
 #ifndef VK_KHR_MAINTENANCE4_EXTENSION_NAME
 #define VK_KHR_MAINTENANCE4_EXTENSION_NAME "VK_KHR_maintenance4"
 #endif
@@ -1692,6 +1752,10 @@ VulkanDeviceBuilder::VulkanDeviceBuilder()
 
 	// Extensions desired for debugging
 	OptionalExtension(VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
+
+	// For pipeline building
+	OptionalExtension(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
+	OptionalExtension(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
 }
 
 VulkanDeviceBuilder& VulkanDeviceBuilder::RequireExtension(const std::string& extensionName)
@@ -1794,6 +1858,7 @@ std::vector<VulkanCompatibleDevice> VulkanDeviceBuilder::FindDevices(const std::
 		enabledFeatures.DescriptorIndexing.descriptorBindingVariableDescriptorCount = deviceFeatures.DescriptorIndexing.descriptorBindingVariableDescriptorCount;
 		enabledFeatures.DescriptorIndexing.shaderSampledImageArrayNonUniformIndexing = deviceFeatures.DescriptorIndexing.shaderSampledImageArrayNonUniformIndexing;
 		enabledFeatures.Fault.deviceFault = deviceFeatures.Fault.deviceFault;
+		enabledFeatures.GraphicsPipelineLibrary.graphicsPipelineLibrary = deviceFeatures.GraphicsPipelineLibrary.graphicsPipelineLibrary;
 
 		// Figure out which queue can present
 		if (surface)

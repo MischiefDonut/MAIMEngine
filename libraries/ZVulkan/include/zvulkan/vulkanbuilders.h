@@ -13,8 +13,11 @@ public:
 
 	VulkanInstanceBuilder& ApiVersionsToTry(const std::vector<uint32_t>& versions);
 	VulkanInstanceBuilder& RequireExtension(const std::string& extensionName);
-	VulkanInstanceBuilder& RequireSurfaceExtensions(bool enable = true);
+	VulkanInstanceBuilder& RequireExtensions(const std::vector<std::string>& extensions);
+	VulkanInstanceBuilder& RequireExtensions(const std::vector<const char*>& extensions);
+	VulkanInstanceBuilder& RequireExtensions(const char** extensions, size_t count);
 	VulkanInstanceBuilder& OptionalExtension(const std::string& extensionName);
+	VulkanInstanceBuilder& OptionalSwapchainColorspace();
 	VulkanInstanceBuilder& DebugLayer(bool enable = true);
 
 	std::shared_ptr<VulkanInstance> Create();
@@ -25,23 +28,6 @@ private:
 	std::set<std::string> optionalExtensions;
 	bool debugLayer = false;
 };
-
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-
-class VulkanSurfaceBuilder
-{
-public:
-	VulkanSurfaceBuilder();
-
-	VulkanSurfaceBuilder& Win32Window(HWND handle);
-
-	std::shared_ptr<VulkanSurface> Create(std::shared_ptr<VulkanInstance> instance);
-
-private:
-	HWND hwnd = {};
-};
-
-#endif
 
 class VulkanDeviceBuilder
 {
@@ -211,8 +197,8 @@ enum class ShaderType
 class ShaderIncludeResult
 {
 public:
-	ShaderIncludeResult(std::string name, std::string text) : name(std::move(name)), text(std::move(text)) { }
-	ShaderIncludeResult(std::string error) : text(std::move(error)) { }
+	ShaderIncludeResult(std::string name, std::string text) : name(std::move(name)), text(std::move(text)) {}
+	ShaderIncludeResult(std::string error) : text(std::move(error)) {}
 
 	std::string name; // fully resolved name of the included header file
 	std::string text; // the file contents - or include error message if name is empty
@@ -247,7 +233,7 @@ public:
 	ShaderBuilder& Code(std::vector<uint32_t> spirv) { code = std::move(spirv); return *this; }
 	ShaderBuilder& DebugName(const char* name) { debugName = name; return *this; }
 
-	std::unique_ptr<VulkanShader> Create(const char *shadername, VulkanDevice *device);
+	std::unique_ptr<VulkanShader> Create(const char* shadername, VulkanDevice* device);
 
 private:
 	std::vector<uint32_t> code;
@@ -403,35 +389,57 @@ public:
 	GraphicsPipelineBuilder& AddVertexShader(VulkanShader *shader);
 	GraphicsPipelineBuilder& AddFragmentShader(VulkanShader *shader);
 
+	GraphicsPipelineBuilder& AddConstant(uint32_t constantID, const void* data, size_t size);
+	GraphicsPipelineBuilder& AddConstant(uint32_t constantID, uint32_t value);
+	GraphicsPipelineBuilder& AddConstant(uint32_t constantID, int32_t value);
+	GraphicsPipelineBuilder& AddConstant(uint32_t constantID, float value);
+
 	GraphicsPipelineBuilder& AddVertexBufferBinding(int index, size_t stride);
 	GraphicsPipelineBuilder& AddVertexAttribute(int location, int binding, VkFormat format, size_t offset);
-
+	
 	GraphicsPipelineBuilder& AddDynamicState(VkDynamicState state);
 
 	GraphicsPipelineBuilder& PolygonMode(VkPolygonMode mode) {rasterizer.polygonMode = mode; return *this;};
+
+	GraphicsPipelineBuilder& Flags(VkPipelineCreateFlags flags);
+	GraphicsPipelineBuilder& LibraryFlags(VkGraphicsPipelineLibraryFlagsEXT flags);
+	GraphicsPipelineBuilder& AddLibrary(VulkanPipeline* pipeline);
 
 	GraphicsPipelineBuilder& DebugName(const char* name) { debugName = name; return *this; }
 
 	std::unique_ptr<VulkanPipeline> Create(VulkanDevice *device);
 
 private:
-	VkGraphicsPipelineCreateInfo pipelineInfo = { };
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo = { };
-	VkPipelineInputAssemblyStateCreateInfo inputAssembly = { };
+	VkGraphicsPipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
 	VkViewport viewport = { };
 	VkRect2D scissor = { };
-	VkPipelineViewportStateCreateInfo viewportState = { };
-	VkPipelineRasterizationStateCreateInfo rasterizer = { };
-	VkPipelineMultisampleStateCreateInfo multisampling = { };
-	VkPipelineColorBlendStateCreateInfo colorBlending = { };
-	VkPipelineDepthStencilStateCreateInfo depthStencil = { };
-	VkPipelineDynamicStateCreateInfo dynamicState = {};
+	VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+	VkPipelineRasterizationStateCreateInfo rasterizer = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+	VkPipelineMultisampleStateCreateInfo multisampling = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+	VkPipelineColorBlendStateCreateInfo colorBlending = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+	VkPipelineDepthStencilStateCreateInfo depthStencil = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+	VkPipelineDynamicStateCreateInfo dynamicState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+
+	VkPipelineLibraryCreateInfoKHR libraryCreate = { VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR };
+	VkGraphicsPipelineLibraryCreateInfoEXT pipelineLibrary = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT };
 
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 	std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
 	std::vector<VkVertexInputBindingDescription> vertexInputBindings;
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttributes;
 	std::vector<VkDynamicState> dynamicStates;
+	std::vector<VkPipeline> libraries;
+
+	struct ShaderSpecialization
+	{
+		VkSpecializationInfo info = {};
+		std::vector<VkSpecializationMapEntry> entries;
+		std::vector<uint8_t> data;
+	};
+
+	std::vector<std::unique_ptr<ShaderSpecialization>> specializations;
 
 	VulkanPipelineCache* cache = nullptr;
 	const char* debugName = nullptr;

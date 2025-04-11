@@ -11,21 +11,27 @@
 	
 	vec3 lightValue(DynLightInfo light)
 	{
-#ifdef USE_SPRITE_CENTER
-		float lightdistance = distance(light.pos.xyz, uActorCenter.xyz);
+		float lightdistance;
+		vec3 lightdir;
+
+		if (USE_SPRITE_CENTER)
+		{
+			lightdistance = distance(light.pos.xyz, uActorCenter.xyz);
+
+			if (light.radius < lightdistance)
+				return vec3(0.0); // Early out lights touching surface but not this fragment
+
+			lightdir = normalize(light.pos.xyz - uActorCenter.xyz);
+		}
+		else
+		{
+			lightdistance = distance(light.pos.xyz, pixelpos.xyz);
 		
-		if (light.radius < lightdistance)
-			return vec3(0.0); // Early out lights touching surface but not this fragment
+			if (light.radius < lightdistance)
+				return vec3(0.0); // Early out lights touching surface but not this fragment
 		
-		vec3 lightdir = normalize(light.pos.xyz - uActorCenter.xyz);
-#else
-		float lightdistance = distance(light.pos.xyz, pixelpos.xyz);
-		
-		if (light.radius < lightdistance)
-			return vec3(0.0); // Early out lights touching surface but not this fragment
-		
-		vec3 lightdir = normalize(light.pos.xyz - pixelpos.xyz);
-#endif
+			lightdir = normalize(light.pos.xyz - pixelpos.xyz);
+		}
 		
 		float attenuation = distanceAttenuation(lightdistance, light.radius, light.strength, light.linearity);
 		
@@ -34,14 +40,14 @@
 			attenuation *= spotLightAttenuation(light.pos.xyz, light.spotDir.xyz, light.spotInnerAngle, light.spotOuterAngle);
 		}
 		
-		#uifdef(LIGHT_NONORMALS)
-		#uelse
+		if (!LIGHT_NONORMALS)
+		{
 			if ((light.flags & LIGHTINFO_ATTENUATED) != 0)
 			{
 				float dotprod = dot(vWorldNormal.xyz, lightdir);
 				attenuation *= clamp(dotprod, 0.0, 1.0);
 			}
-		#uendif
+		}
 		
 		if (attenuation > 0.0) // Skip shadow map test if possible
 		{
