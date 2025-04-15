@@ -131,7 +131,7 @@ FString M_GetAppDataPath(bool create)
 FString M_GetCachePath(bool create)
 {
 	// [Disdain] use our own cache directory
-	FString path = NicePath("$HOME/.config/disdain/engine/cache");
+	FString path = NicePath("$HOME/.config/maim/engine/cache");
 	if (create)
 	{
 		CreatePath(path.GetChars());

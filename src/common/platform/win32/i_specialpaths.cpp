@@ -164,7 +164,7 @@ FString M_GetCachePath(bool create)
 	FString path = GetKnownFolder(CSIDL_LOCAL_APPDATA, FOLDERID_LocalAppData, create);
 
 	// [Disdain] use our own cache directory
-	path += "/disdain/engine/cache";
+	path += "/maim/engine/cache";
 	if (create)
 	{
 		CreatePath(path.GetChars());

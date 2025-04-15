@@ -127,7 +127,7 @@ FString M_GetCachePath(bool create)
 	}
 
 	// [Disdain] use our own cache directory
-	path += "/disdain/engine/cache";
+	path += "/maim/engine/cache";
 	if (create) CreatePath(path.GetChars());
 	return path;
 }
