@@ -44,7 +44,7 @@ thread_local FDynLightData lightdata;
 
 // These shouldn't be called 'gl...' anymore...
 CVAR (Bool, gl_light_sprites, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
-CVAR (Bool, gl_light_particles, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
+CVAR (Bool, gl_light_particles, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG); // [Disdain]
 
 
 //==========================================================================
@@ -96,7 +96,7 @@ void AddLightToList(FDynLightData &dld, int group, FDynamicLight * light, bool f
 		cs = 1.0f;
 	}
 
-	if (light->target)
+	if (light->target && (light->target->renderflags2 & RF2_LIGHTMULTALPHA))
 		cs *= (float)light->target->Alpha;
 
 	info.r = light->GetRed() / 255.0f * cs;
