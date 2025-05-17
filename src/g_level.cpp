@@ -1386,6 +1386,7 @@ void G_DoLoadLevel(const FString &nextmapname, int position, bool autosave, bool
 void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool autosave, bool newGame)
 {
 	MapName = nextmapname;
+	MapFName = MapName;
 	int i;
 
 	if (NextSkill >= 0)
@@ -2028,7 +2029,7 @@ void G_ReadSnapshots(FResourceFile *resf)
 
 	G_ClearSnapshots();
 
-	for (unsigned j = 0; j < resf->EntryCount(); j++)
+	for (unsigned j = 0; j < resf->EntryCountU(); j++)
 	{
 		auto name = resf->getName(j);
 		auto ptr = strstr(name, ".map.json");

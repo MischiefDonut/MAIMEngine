@@ -74,40 +74,19 @@ static FCRandom randLight;
 extern TArray<FLightDefaults *> StateLights;
 
 
-static void MarkTilesForUpdate(FLevelLocals * Level, const TArrayView<int> &tiles)
-{
-	for(int i : tiles)
-	{
-		if(i >= 0)
-		{
-			auto &tile = Level->levelMesh->Lightmap.Tiles[i];
-			if(tile.AlwaysUpdate == 0 && !tile.NeedsUpdate)
-			{
-				tile.AlwaysUpdate = 3;
-			}
-		}
-	}
-}
-
 static void MarkTilesForUpdate(FLevelLocals * Level, FLightNode * touching_sides, FLightNode * touching_sector)
 {
 	if(Level->levelMesh)
 	{
 		while(touching_sides)
 		{
-			MarkTilesForUpdate(Level, touching_sides->targLine->LightmapTiles);
-
+			LevelMeshUpdater->SideLightListChanged(touching_sides->targLine);
 			touching_sides = touching_sides->nextTarget;
 		}
 	
 		while(touching_sector)
 		{
-			for(subsector_t * ss : touching_sector->targSection->subsectors)
-			{
-				MarkTilesForUpdate(Level, ss->LightmapTiles[0]);
-				MarkTilesForUpdate(Level, ss->LightmapTiles[1]);
-			}
-
+			LevelMeshUpdater->SectorLightListChanged(touching_sector->targSection->sector);
 			touching_sector = touching_sector->nextTarget;
 		}
 	}
@@ -160,6 +139,7 @@ void AttachLight(AActor *self)
 
 	light->pSpotInnerAngle = &self->AngleVar(NAME_SpotInnerAngle);
 	light->pSpotOuterAngle = &self->AngleVar(NAME_SpotOuterAngle);
+	light->lightDefIntensity = 1.0;
 	light->pPitch = &self->Angles.Pitch;
 	light->pLightFlags = (LightFlags*)&self->IntVar(NAME_lightflags);
 	light->shadowMinQuality = std::clamp(self->IntVar(NAME_shadowMinQuality), 0, 4);
@@ -673,11 +653,7 @@ void FDynamicLight::CollectWithinRadius(const DVector3 &opos, FSection *section,
 
 		if(markTiles)
 		{
-			for(subsector_t * ss : section->subsectors)
-			{
-				MarkTilesForUpdate(Level, ss->LightmapTiles[0]);
-				MarkTilesForUpdate(Level, ss->LightmapTiles[1]);
-			}
+			LevelMeshUpdater->SectorLightListChanged(section->sector);
 		}
 
 		auto processSide = [&](side_t *sidedef, const vertex_t *v1, const vertex_t *v2)
@@ -692,7 +668,7 @@ void FDynamicLight::CollectWithinRadius(const DVector3 &opos, FSection *section,
 					touching_sides = AddLightNode(&sidedef->lighthead, sidedef, this, touching_sides);
 					if(markTiles)
 					{
-						MarkTilesForUpdate(Level, sidedef->LightmapTiles);
+						LevelMeshUpdater->SideLightListChanged(sidedef);
 					}
 				}
 				else if (linedef->sidedef[0] == sidedef && linedef->sidedef[1] == nullptr)
@@ -784,7 +760,7 @@ void FDynamicLight::CollectWithinRadius(const DVector3 &opos, FSection *section,
 			}
 		}
 	}
-	shadowmapped = hitonesidedback && !DontShadowmap() && shadowMinQuality <= gl_light_shadow_max_quality;
+	shadowmapped = (hitonesidedback || gl_light_shadows > 1) && !DontShadowmap() && shadowMinQuality <= gl_light_shadow_max_quality;
 }
 
 //==========================================================================
@@ -834,8 +810,7 @@ void FDynamicLight::LinkLight()
 		{
 			if (node->lightsource == nullptr)
 			{
-				MarkTilesForUpdate(Level, node->targLine->LightmapTiles);
-
+				LevelMeshUpdater->SideLightListChanged(node->targLine);
 				node = DeleteLightNode(node);
 			}
 			else
@@ -847,12 +822,7 @@ void FDynamicLight::LinkLight()
 		{
 			if (node->lightsource == nullptr)
 			{
-				for(subsector_t * ss : node->targSection->subsectors)
-				{
-					MarkTilesForUpdate(Level, ss->LightmapTiles[0]);
-					MarkTilesForUpdate(Level, ss->LightmapTiles[1]);
-				}
-
+				LevelMeshUpdater->SectorLightListChanged(node->targSection->sector);
 				node = DeleteLightNode(node);
 			}
 			else
@@ -899,17 +869,13 @@ void FDynamicLight::UnlinkLight ()
 	{
 		while (touching_sides)
 		{
-			MarkTilesForUpdate(Level, touching_sides->targLine->LightmapTiles);
+			LevelMeshUpdater->SideLightListChanged(touching_sides->targLine);
 			touching_sides = DeleteLightNode(touching_sides);
 		}
 
 		while (touching_sector)
 		{
-			for(subsector_t * ss : touching_sector->targSection->subsectors)
-			{
-				MarkTilesForUpdate(Level, ss->LightmapTiles[0]);
-				MarkTilesForUpdate(Level, ss->LightmapTiles[1]);
-			}
+			LevelMeshUpdater->SectorLightListChanged(touching_sector->targSection->sector);
 			touching_sector = DeleteLightNode(touching_sector);
 		}
 	}
@@ -1065,7 +1031,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_AttachLightDef, AttachLightDef)
 //
 //==========================================================================
 
-int AttachLightDirect(AActor *self, int _lightid, int type, int color, int radius1, int radius2, int flags, double ofs_x, double ofs_y, double ofs_z, double param, double spoti, double spoto, double spotp)
+int AttachLightDirect(AActor *self, int _lightid, int type, int color, int radius1, int radius2, int flags, double ofs_x, double ofs_y, double ofs_z, double param, double spoti, double spoto, double spotp, double intensity, double softshadowradius)
 {
 	FName lightid = FName(ENamedName(_lightid));
 	auto userlight = self->UserLights[FindUserLight(self, lightid, true)];
@@ -1081,6 +1047,7 @@ int AttachLightDirect(AActor *self, int _lightid, int type, int color, int radiu
 	userlight->SetParameter(type == PulseLight? param*TICRATE : param*360.);
 	userlight->SetSpotInnerAngle(spoti);
 	userlight->SetSpotOuterAngle(spoto);
+	userlight->SetLightDefIntensity(intensity);
 	if (spotp >= -90. && spotp <= 90.)
 	{
 		userlight->SetSpotPitch(spotp);
@@ -1089,6 +1056,7 @@ int AttachLightDirect(AActor *self, int _lightid, int type, int color, int radiu
 	{
 		userlight->UnsetSpotPitch();
 	}
+	userlight->SetSoftShadowRadius(softshadowradius);
 	self->flags8 |= MF8_RECREATELIGHTS;
 	self->Level->flags3 |= LEVEL3_LIGHTCREATED;
 	return 1;
@@ -1110,7 +1078,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_AttachLight, AttachLightDirect)
 	PARAM_FLOAT(spoti);
 	PARAM_FLOAT(spoto);
 	PARAM_FLOAT(spotp);
-	ACTION_RETURN_BOOL(AttachLightDirect(self, lightid.GetIndex(), type, color, radius1, radius2, flags, ofs_x, ofs_y, ofs_z, parami, spoti, spoto, spotp));
+	PARAM_FLOAT(intensity);
+	PARAM_FLOAT(softshadowradius);
+	ACTION_RETURN_BOOL(AttachLightDirect(self, lightid.GetIndex(), type, color, radius1, radius2, flags, ofs_x, ofs_y, ofs_z, parami, spoti, spoto, spotp, intensity, softshadowradius));
 }
 
 //==========================================================================

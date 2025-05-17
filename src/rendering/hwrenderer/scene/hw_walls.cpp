@@ -842,6 +842,7 @@ bool HWWall::DoHorizon(HWWallDispatcher *di, FRenderState& state, seg_t * seg,se
 				hi.lightlevel = hw_ClampLight(fs->GetCeilingLight());
 				hi.colormap = fs->Colormap;
 				hi.specialcolor = fs->SpecialColors[sector_t::ceiling];
+				hi.sunlight = level.lightmaps && fs->GetTexture(sector_t::floor) == skyflatnum && level.SunDirection.Z < 0.0f;
 
 				if (fs->e->XFloor.ffloors.Size())
 				{
@@ -871,6 +872,7 @@ bool HWWall::DoHorizon(HWWallDispatcher *di, FRenderState& state, seg_t * seg,se
 				hi.lightlevel = hw_ClampLight(fs->GetFloorLight());
 				hi.colormap = fs->Colormap;
 				hi.specialcolor = fs->SpecialColors[sector_t::floor];
+				hi.sunlight = level.lightmaps && fs->GetTexture(sector_t::ceiling) == skyflatnum && level.SunDirection.Z > 0.0f;
 
 				if (fs->e->XFloor.ffloors.Size())
 				{
@@ -1149,7 +1151,7 @@ void HWWall::DoTexture(HWWallDispatcher *di, FRenderState& state, int _type,seg_
 		if (seg->sidedef->LightmapTiles.Size() >= 4 && type >= RENDERWALL_TOP && type <= RENDERWALL_BOTTOM)
 		{
 			lightmaptile = seg->sidedef->LightmapTiles[type - RENDERWALL_TOP];
-			if (lightmaptile && di->di)
+			if (lightmaptile >= 0 && di->di)
 			{
 				di->di->PushVisibleTile(lightmaptile);
 			}
@@ -1582,7 +1584,7 @@ void HWWall::BuildFFBlock(HWWallDispatcher *di, FRenderState& state, seg_t * seg
 		else
 			lightmaptile = seg->linedef->sidedef[0]->LightmapTiles.Size() > 4 + roverIndex ? seg->linedef->sidedef[0]->LightmapTiles[4 + roverIndex] : -1;
 
-		if (lightmaptile > 0)
+		if (lightmaptile >= 0)
 		{
 			di->di->PushVisibleTile(lightmaptile);
 		}

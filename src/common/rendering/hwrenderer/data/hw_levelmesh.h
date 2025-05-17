@@ -144,11 +144,13 @@ public:
 	SurfaceAllocInfo AllocSurface();
 	LightAllocInfo AllocLight();
 	LightListAllocInfo AllocLightList(int count);
+	int AllocTile(const LightmapTile& tile);
 
 	void FreeGeometry(int vertexStart, int vertexCount, int indexStart, int indexCount);
 	void FreeUniforms(int start, int count);
 	void FreeSurface(unsigned int surfaceIndex);
 	void FreeLightList(int start, int count);
+	void FreeTile(int index);
 
 	// Sets the sizes of all the GPU buffers and empties the mesh
 	virtual void Reset(const LevelMeshLimits& limits);
@@ -225,20 +227,20 @@ public:
 	// Lightmap tiles and their locations in the texture atlas
 	struct
 	{
-		int TextureCount = 0;
+		int TextureCount = 10; // To do: remove all the limits and instead resize GPU resources if they are exhausted. Too difficult to calculate it all up front.
 		int TextureSize = 1024;
 		TArray<uint16_t> TextureData;
 		uint16_t SampleDistance = 8;
 		TArray<LightmapTile> Tiles;
-		bool StaticAtlasPacked = false;
-		int DynamicTilesStart = 0;
-		TArray<int> DynamicSurfaces;
+		int UsedTiles = 0;
+		TArray<int> FreeTiles;
+		TArray<int> AddedTiles;
+		TArray<int> AddedSurfaces;
+		std::unique_ptr<RectPacker> AtlasPacker;
 	} Lightmap;
 
 	uint32_t AtlasPixelCount() const { return uint32_t(Lightmap.TextureCount * Lightmap.TextureSize * Lightmap.TextureSize); }
-	void PackStaticLightmapAtlas();
-	void ClearDynamicLightmapAtlas();
-	void PackDynamicLightmapAtlas();
+	void PackLightmapAtlas();
 
 	void AddEmptyMesh();
 	
@@ -250,7 +252,7 @@ struct LevelMeshTileStats
 {
 	struct Stats
 	{
-		uint32_t total = 0, dirty = 0, dirtyDynamic = 0;
+		uint32_t total = 0, dirty = 0;
 	};
 
 	Stats tiles, pixels;
@@ -320,6 +322,21 @@ inline SurfaceAllocInfo LevelMesh::AllocSurface()
 	return info;
 }
 
+inline int LevelMesh::AllocTile(const LightmapTile& tile)
+{
+	Lightmap.UsedTiles++;
+	if (Lightmap.FreeTiles.Size() != 0)
+	{
+		int index = Lightmap.FreeTiles.Last();
+		Lightmap.FreeTiles.Pop();
+		Lightmap.Tiles[index] = tile;
+		return index;
+	}
+	int index = Lightmap.Tiles.Size();
+	Lightmap.Tiles.Push(tile);
+	return index;
+}
+
 inline void LevelMesh::FreeGeometry(int vertexStart, int vertexCount, int indexStart, int indexCount)
 {
 	// Convert triangles to degenerates
@@ -344,6 +361,12 @@ inline void LevelMesh::FreeLightList(int start, int count)
 inline void LevelMesh::FreeSurface(unsigned int surfaceIndex)
 {
 	FreeLists.Surface.Free(surfaceIndex, 1);
+}
+
+inline void LevelMesh::FreeTile(int index)
+{
+	Lightmap.UsedTiles--;
+	Lightmap.FreeTiles.Push(index);
 }
 
 inline void LevelMesh::UploadPortals()

@@ -8,6 +8,8 @@
 #define LIGHTMAP_GLOBAL_SAMPLE_DISTANCE_MIN (int)4
 #define LIGHTMAP_GLOBAL_SAMPLE_DISTANCE_MAX (int)64
 
+class RectPackerItem;
+
 struct LevelMeshSurface;
 
 struct LightmapTileBinding
@@ -34,6 +36,7 @@ struct LightmapTile
 		int Width = 0;
 		int Height = 0;
 		int ArrayIndex = 0;
+		RectPackerItem* Item = nullptr;
 		uint32_t Area() const { return Width * Height; }
 	} AtlasLocation;
 
@@ -45,16 +48,26 @@ struct LightmapTile
 		FVector3 ProjLocalToV = { 0.0f, 0.0f, 0.0f };
 	} Transform;
 
+	int UseCount = 0;
+	bool AddedThisFrame = false;
+
 	LightmapTileBinding Binding;
 
 	BBox Bounds;
 	uint16_t SampleDimension = 0;
 	FVector4 Plane = FVector4(0.0f, 0.0f, 1.0f, 0.0f);
 
-	// True if the tile needs to be rendered into the lightmap texture before it can be used
-	bool NeedsUpdate = true;
+	// Initial tile for surfaces that can be baked in the background
+	bool NeedsInitialBake = false;
 
-	uint8_t AlwaysUpdate = 0;
+	// This tile MUST be baked before it can be rendered
+	bool GeometryUpdate = true;
+
+	// The light for this tile changed since last bake
+	bool ReceivedNewLight = true;
+
+	// Used to track if tile has already been added to the VisibleTiles list for this scene
+	int LastSeen = 0;
 
 	FVector2 ToUV(const FVector3& vert) const
 	{
