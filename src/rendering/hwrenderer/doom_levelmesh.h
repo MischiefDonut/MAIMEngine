@@ -19,6 +19,13 @@ struct HWDrawInfo;
 class DoomLevelMesh;
 class MeshBuilder;
 
+struct HWMissing
+{
+	side_t* side;
+	subsector_t* sub;
+	double plane;
+};
+
 struct DoomSurfaceInfo
 {
 	DoomLevelMeshSurfaceType Type = ST_NONE;
@@ -52,10 +59,10 @@ struct GeometryFreeInfo
 
 struct DrawRangeInfo
 {
-	int PipelineID = 0;
 	LevelMeshDrawType DrawType = {};
-	int DrawIndexStart = 0;
-	int DrawIndexCount = 0;
+	int PipelineID = 0;
+	int IndexStart = 0;
+	int IndexCount = 0;
 };
 
 enum SurfaceUpdateType
@@ -73,9 +80,11 @@ struct SideSurfaceBlock
 	TArray<GeometryFreeInfo> Geometries;
 	TArray<UniformsAllocInfo> Uniforms;
 	TArray<HWWall> WallPortals;
+	TArray<HWMissing> MissingUpper;
+	TArray<HWMissing> MissingLower;
 	TArray<HWDecalCreateInfo> Decals;
-	bool InSidePortalsList = false;
 	bool InSideDecalsList = false;
+	bool NeedsImmediateRendering = false;
 	TArray<DrawRangeInfo> DrawRanges;
 	SurfaceUpdateType UpdateType = SurfaceUpdateType::None;
 	LightListAllocInfo Lights;
@@ -91,11 +100,55 @@ struct FlatSurfaceBlock
 	TArray<LightListAllocInfo> Lights;
 };
 
+enum class LevelMeshDrawType
+{
+	Opaque,
+	Masked,
+	MaskedOffset,
+	Portal,
+	Translucent,
+	TranslucentBorder,
+	NumDrawTypes
+};
+
+class LevelMeshDrawLists
+{
+public:
+	TArray<TArray<MeshBufferRange>> List[static_cast<int>(LevelMeshDrawType::NumDrawTypes)];
+
+	void Clear()
+	{
+		for (auto& l : List)
+		{
+			for (auto& p : l)
+			{
+				p.Clear();
+			}
+		}
+	}
+
+	void Add(LevelMeshDrawType drawType, int pipelineID, const MeshBufferRange& range)
+	{
+		int listIndex = static_cast<int>(drawType);
+		if (pipelineID >= (int)List[listIndex].Size())
+			List[listIndex].Resize(pipelineID + 1);
+		List[listIndex][pipelineID].Push(range);
+	}
+};
+
 class DoomLevelMesh : public LevelMesh, public UpdateLevelMesh
 {
 public:
 	DoomLevelMesh(FLevelLocals &doomMap);
 	~DoomLevelMesh();
+
+	void FullRefresh() override
+	{
+		for (unsigned int i = 0; i < Sides.Size(); i++)
+			UpdateSide(i, SurfaceUpdateType::Full);
+		for (unsigned int i = 0; i < Flats.Size(); i++)
+			UpdateFlat(i, SurfaceUpdateType::Full);
+	}
 
 	void PrintSurfaceInfo(const LevelMeshSurface* surface);
 
@@ -105,11 +158,10 @@ public:
 
 	void BuildSectorGroups(const FLevelLocals& doomMap);
 
-	void ProcessDecals(HWDrawInfo* drawinfo, FRenderState& state);
+	void AddSectorsToDrawLists(const TArray<int>& sectors, LevelMeshDrawLists& lists);
+	void AddSidesToDrawLists(const TArray<int>& sides, LevelMeshDrawLists& lists, HWDrawInfo* di, FRenderState& state);
 
-	TArray<int> SideDecals;
-	TArray<int> SidePortals;
-	TArray<HWWall*> WallPortals;
+	TArray<HWWall>& GetSidePortals(int sideIndex);
 
 	TArray<int> sectorGroup; // index is sector, value is sectorGroup
 	TArray<int> sectorPortals[2]; // index is sector+plane, value is index into the portal list
@@ -176,12 +228,12 @@ private:
 	void FreeSide(FLevelLocals& doomMap, unsigned int sideIndex);
 	void FreeFlat(FLevelLocals& doomMap, unsigned int sectorIndex);
 
-	void UpdateWallPortals();
-
 	void SetSubsectorLightmap(int surfaceIndex);
 	void SetSideLightmap(int surfaceIndex);
 
-	void CreateWallSurface(side_t* side, HWWallDispatcher& disp, MeshBuilder& state, TArray<HWWall>& list, LevelMeshDrawType drawType, bool translucent, unsigned int sectorIndex, const LightListAllocInfo& lightlist);
+	void CreateModelSurfaces(AActor* thing, FSpriteModelFrame* modelframe);
+
+	void CreateWallSurface(side_t* side, HWWallDispatcher& disp, MeshBuilder& state, TArray<HWWall>& list, LevelMeshDrawType drawType, unsigned int sectorIndex, const LightListAllocInfo& lightlist);
 	void CreateFlatSurface(HWFlatDispatcher& disp, MeshBuilder& state, TArray<HWFlat>& list, LevelMeshDrawType drawType, bool translucent, unsigned int sectorIndex, const LightListAllocInfo& lightlist, int lightlistSection);
 
 	BBox GetBoundsFromSurface(const LevelMeshSurface& surface) const;
@@ -196,9 +248,7 @@ private:
 	void UpdateLight(FDynamicLight* light);
 	void CopyToMeshLight(FDynamicLight* light, LevelMeshLight& meshlight, int portalgroup);
 
-	void AddToDrawList(TArray<DrawRangeInfo>& drawRanges, int pipelineID, int indexStart, int indexCount, LevelMeshDrawType drawType);
-	void RemoveFromDrawList(const TArray<DrawRangeInfo>& drawRanges);
-	void SortDrawLists();
+	void AddToDrawList(TArray<DrawRangeInfo>& drawRanges, LevelMeshDrawType drawType, int pipelineID, int indexStart, int indexCount);
 
 	void UploadDynLights(FLevelLocals& doomMap);
 

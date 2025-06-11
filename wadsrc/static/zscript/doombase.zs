@@ -981,6 +981,9 @@ struct FRailParams
 
 struct Lightmap
 {
+	// Mark lightmap tiles for update. Prefer this over Invalidate() as the latter can crash weak graphics cards.
+	native static void Update();
+
 	// Mark all lightmap surfaces for recalculation. The internal lightmapper will gradually recalculate every single lightmap surface in the level.
 	native static void Invalidate();
 
@@ -996,3 +999,5 @@ struct Lightmap
     // Calling this does NOT recalculate the lightmap.
     native static void SetSunIntensity(double intensity);
 };
+
+class StaticMapModel : Actor {}

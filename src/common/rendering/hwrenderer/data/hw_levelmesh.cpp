@@ -46,13 +46,10 @@ void LevelMesh::Reset(const LevelMeshLimits& limits)
 	Mesh.Indexes.Resize(limits.MaxIndexes);
 	Mesh.SurfaceIndexes.Resize(limits.MaxIndexes / 3 + 1);
 
-	Mesh.DrawIndexes.Resize(limits.MaxIndexes);
-
 	FreeLists.Vertex.Reset(limits.MaxVertices);
 	FreeLists.Index.Reset(limits.MaxIndexes);
 	FreeLists.Uniforms.Reset(limits.MaxUniforms);
 	FreeLists.Surface.Reset(limits.MaxSurfaces);
-	FreeLists.DrawIndex.Reset(limits.MaxIndexes);
 	FreeLists.LightIndex.Reset(limits.MaxSurfaces * 10);
 	FreeLists.Light.Reset(maxLights);
 }
@@ -371,95 +368,4 @@ void MeshBufferUploads::Add(int position, int count)
 	auto leftPos = left - Ranges.begin();
 	auto rightPos = right - Ranges.begin();
 	Ranges.Delete(leftPos, rightPos - leftPos);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-void LevelMeshDrawList::Add(int position, int count)
-{
-	if (count <= 0)
-		return;
-
-	MeshBufferRange range = { position, position + count };
-
-	// First element?
-	if (Ranges.Size() == 0)
-	{
-		Ranges.push_back(range);
-		return;
-	}
-
-	// Find start position in ranges
-	auto right = std::lower_bound(Ranges.begin(), Ranges.end(), range, [](const auto& a, const auto& b) { return a.Start < b.Start; });
-	bool leftExists = right != Ranges.begin();
-	bool rightExists = right != Ranges.end();
-	auto left = right;
-	if (leftExists)
-		--left;
-
-	// Is this a gap between two ranges?
-	if ((!leftExists || left->End < range.Start) && (!rightExists || right->Start > range.End))
-	{
-		Ranges.Insert(right - Ranges.begin(), range);
-		return;
-	}
-
-	// Are we extending the left or the right range?
-	if (leftExists && range.Start <= left->End)
-	{
-		left->End = std::max(left->End, range.End);
-		right = left;
-	}
-	else // if (rightExists && right->Start <= range.End)
-	{
-		right->Start = range.Start;
-		right->End = std::max(right->End, range.End);
-		left = right;
-	}
-
-	// Merge overlaps to the right
-	while (true)
-	{
-		++right;
-		if (right == Ranges.end() || right->Start > range.End)
-			break;
-		left->End = std::max(right->End, range.End);
-	}
-
-	// Remove ranges now covered by the extended range
-	//ranges.erase(++left, right);
-	++left;
-	auto leftPos = left - Ranges.begin();
-	auto rightPos = right - Ranges.begin();
-	Ranges.Delete(leftPos, rightPos - leftPos);
-}
-
-void LevelMeshDrawList::Remove(int position, int count)
-{
-	if (count <= 0)
-		return;
-
-	MeshBufferRange range = { position, position + count };
-
-	auto entry = std::lower_bound(Ranges.begin(), Ranges.end(), range, [](const auto& a, const auto& b) { return a.End < b.End; });
-	if (entry->Start == range.Start && entry->End == range.End)
-	{
-		Ranges.Delete(entry - Ranges.begin());
-	}
-	else if (entry->Start == range.Start)
-	{
-		entry->Start = range.End;
-	}
-	else if (entry->End == range.End)
-	{
-		entry->End = range.Start;
-	}
-	else
-	{
-		MeshBufferRange split;
-		split.Start = entry->Start;
-		split.End = range.Start;
-		entry->Start = range.End;
-		Ranges.Insert(entry - Ranges.begin(), split);
-	}
 }

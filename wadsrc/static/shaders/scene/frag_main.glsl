@@ -30,10 +30,16 @@ void main()
 
 	#if defined(USE_LEVELMESH)
 		const int lightTileSize = 1;
-		uLightIndex = int(uint(gl_FragCoord.x) / 64 + uint(gl_FragCoord.y) / 64 * uLightTilesWidth) * lightTileSize;
+		//uLightIndex = int(uint(gl_FragCoord.x) / 64 + uint(gl_FragCoord.y) / 64 * uLightTilesWidth) * lightTileSize;
+		uLightIndex = -1;
 	#endif
 
 		Material material = CreateMaterial();
+
+	if (PALETTEMODE)
+	{
+		material.Base.a = material.Base.r != 0.0 ? 1.0 : 0.0;
+	}
 
 	#ifdef DO_ALPHATEST
 		if (material.Base.a <= uAlphaThreshold) discard;

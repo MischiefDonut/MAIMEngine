@@ -96,7 +96,6 @@ enum DrawListType
 	GLDL_TYPES,
 };
 
-
 struct HWDrawInfo
 {
 	struct wallseg
@@ -191,8 +190,43 @@ struct HWDrawInfo
 	area_t	in_area;
 	fixed_t viewx, viewy;	// since the nodes are still fixed point, keeping the view position  also fixed point for node traversal is faster.
 	bool multithread;
+	bool uselevelmesh;
 
-	TArray<bool> QueryResultsBuffer;
+	struct VisList
+	{
+		const TArray<int>& Get() const { return List; }
+
+		void Clear()
+		{
+			for (int index : List)
+				AddedToList[index] = false;
+			List.Clear();
+		}
+
+		void Add(int index)
+		{
+			if (index >= (int)AddedToList.size())
+			{
+				int lastSize = AddedToList.size();
+				AddedToList.resize(index + 1); // Beware! TArray does not clear on resize!
+				for (int i = lastSize; i < index + 1; i++)
+					AddedToList[i] = false;
+			}
+
+			if (!AddedToList[index])
+			{
+				AddedToList[index] = true;
+				List.Push(index);
+			}
+		}
+
+	private:
+		TArray<int> List;
+		TArray<bool> AddedToList;
+	};
+	
+	VisList SeenSectors, SeenSides, SeenSubsectors, SeenHackedSubsectors, SeenSubsectorPortals;
+	LevelMeshDrawLists SeenFlatsDrawLists, SeenSidesDrawLists;
 
 	HWDrawInfo(HWDrawContext* drawctx) : drawctx(drawctx) { for (HWDrawList& list : drawlists) list.drawctx = drawctx; }
 
@@ -206,9 +240,7 @@ struct HWDrawInfo
 	void AddPolyobjs(subsector_t *sub);
 	void AddLines(subsector_t * sub, sector_t * sector);
 	void AddSpecialPortalLines(subsector_t * sub, sector_t * sector, linebase_t *line);
-	public:
-	void RenderThings(subsector_t * sub, sector_t * sector);
-	void RenderParticles(subsector_t *sub, sector_t *front);
+public:
 	void DoSubsector(subsector_t * sub);
 	void DrawPSprite(HUDSprite* huds, FRenderState& state);
 	WeaponLighting GetWeaponLighting(sector_t* viewsector, const DVector3& pos, int cm, area_t in_area, const DVector3& playerpos);
@@ -265,7 +297,7 @@ public:
 				if (tile->Binding.Type == ST_UPPERSIDE || tile->Binding.Type == ST_MIDDLESIDE || tile->Binding.Type == ST_LOWERSIDE)
 				{
 					sector_t* sector = Level->sides[tile->Binding.TypeIndex].sector;
-					if (sector && sector->Flags & SECF_LM_DYNAMIC)
+					if (sector && (sector->Flags & SECF_LM_DYNAMIC || lm_dynlights || Level->LevelWideLMDynamic))
 					{
 						VisibleTiles.ReceivedNewLight.Push(tile);
 					}
@@ -273,7 +305,7 @@ public:
 				else if (tile->Binding.Type == ST_CEILING || tile->Binding.Type == ST_FLOOR)
 				{
 					sector_t* sector = Level->subsectors[tile->Binding.TypeIndex].sector;
-					if (sector && sector->Flags & SECF_LM_DYNAMIC)
+					if (sector && (sector->Flags & SECF_LM_DYNAMIC || lm_dynlights || Level->LevelWideLMDynamic))
 					{
 						VisibleTiles.ReceivedNewLight.Push(tile);
 					}
@@ -282,9 +314,12 @@ public:
 		}
 	}
 
+	void ProcessSeg(seg_t* seg, FRenderState& state);
+
 	HWPortal * FindPortal(const void * src);
 	void RenderBSPNode(void *node, FRenderState& state);
 	void RenderOrthoNoFog(FRenderState& state);
+	void RenderPVS(bool drawpsprites, FRenderState& state);
 	void RenderBSP(void *node, bool drawpsprites, FRenderState& state);
 
 	static HWDrawInfo *StartDrawInfo(HWDrawContext* drawctx, FLevelLocals *lev, HWDrawInfo *parent, FRenderViewpoint &parentvp, HWViewpointUniforms *uniforms);
