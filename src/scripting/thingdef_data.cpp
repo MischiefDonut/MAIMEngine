@@ -357,7 +357,6 @@ static FFlagDef ActorFlagDefs[]=
 	DEFINE_FLAG(MF9, FORCESECTORDAMAGE, AActor, flags9),
 	DEFINE_FLAG(MF9, NOAUTOOFFSKULLFLY, AActor, flags9),
 
-	DEFINE_FLAG(DF, SWIM, AActor, DisdainFlags),
 	DEFINE_FLAG(DF, GLIDESONWALLS, AActor, DisdainFlags),
 
 	// Effect flags
@@ -828,6 +827,10 @@ void InitThingdef()
 	auto frp = NewStruct("FRailParams", nullptr);
 	frp->Size = sizeof(FRailParams);
 	frp->Align = alignof(FRailParams);
+
+	auto fwr = NewStruct("FWaterResults", nullptr);
+	fwr->Size = sizeof(FWaterResults);
+	fwr->Align = alignof(FWaterResults);
 
 	auto netcmdstruct = NewStruct("NetworkCommand", nullptr, true);
 	netcmdstruct->Size = sizeof(FNetworkCommand);
