@@ -422,6 +422,9 @@ CCMD (pause)
 {
 	if (netgame)
 	{
+		if (deathmatch)
+			return; // [DISDAIN]
+
 		if (net_disablepause == 2 && (!paused || !players[consoleplayer].settings_controller))
 		{
 			Printf("Pausing the game is currently disabled\n");
