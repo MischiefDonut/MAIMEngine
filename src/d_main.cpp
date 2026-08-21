@@ -123,6 +123,9 @@
 #include "i_system.h"  // for SHARE_DIR
 #endif // __unix__
 
+// [DISDAIN]
+#include "c_bind.h"
+
 using namespace FileSys;
 
 EXTERN_CVAR(Bool, hud_althud)
@@ -541,6 +544,9 @@ cycle_t FrameCycles;
 
 // [SP] Store the capabilities of the renderer in a global variable, to prevent excessive per-frame processing
 uint32_t r_renderercaps = 0;
+
+// [DISDAIN] force a config reset when needed
+bool forceResetConfig = false;
 
 // PRIVATE DATA DEFINITIONS ------------------------------------------------
 
@@ -3761,6 +3767,16 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<FileSys::ResourceN
 				Printf("%s\n", str);
 			}
 		}
+	}
+
+	// [DISDAIN]
+	if (forceResetConfig)
+	{
+		C_SetDefaultBindings();
+		C_SetCVarsToDefaults();
+		R_SetViewSize(screenblocks);
+		forceResetConfig = false;
+		I_FatalError("A major version update has been detected. Your config file will be reset. Please relaunch the game. Sorry for the inconvenience!");
 	}
 
 	if (!restart)

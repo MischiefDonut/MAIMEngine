@@ -166,6 +166,9 @@ static void CollectDefaultSearchPaths()
 #endif
 }
 
+// [DISDAIN]
+extern bool forceResetConfig;
+
 FGameConfigFile::FGameConfigFile ()
 {
 	FString pathname;
@@ -721,6 +724,18 @@ void FGameConfigFile::DoGlobalSetup ()
 		}
 	}
 
+	// [DISDAIN]
+	const char *disdainVersion = GetValueForKey("DisdainVersion");
+	if (disdainVersion)
+	{
+		double ldv = atof(disdainVersion);
+		int v = atoi(DISDAINVERSION);
+		if (ldv < v)
+		{
+			forceResetConfig = true;
+		}
+	}
+
 	OkayToWrite = true;
 
 	if(QueueWrite)
@@ -988,6 +1003,9 @@ void FGameConfigFile::ArchiveGlobalData ()
 	ClearCurrentSection ();
 	SetValueForKey ("Version", ENGINELASTRUNVERSION);
 	SetValueForKey ("Release", VERSIONSTR);
+
+	// [DISDAIN]
+	SetValueForKey("DisdainVersion", DISDAINVERSION);
 
 	SetSection ("GlobalSettings", true);
 	ClearCurrentSection ();

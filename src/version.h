@@ -120,3 +120,6 @@ const char *GetGitHash();
 const char *GetGitTime();
 const char *GetGitTag();
 int GetGitDistance();
+
+// [DISDAIN]
+#define DISDAINVERSION "1"
