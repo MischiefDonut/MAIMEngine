@@ -53,6 +53,11 @@ public:
 	int TimeToStartDecay;
 	int TimeToEndDecay;
 	double StartTrans;
+
+	// [DISDAIN]
+	// This fader will only be active during a deathmatch game
+	// Used to brute-force the swift deletion of decals in PVP
+	bool DeathmatchOnly;
 };
 
 class DDecalColorer : public DDecalThinker

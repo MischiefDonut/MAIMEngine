@@ -100,6 +100,9 @@ struct FDecalFaderAnim : public FDecalAnimator
 
 	int DecayStart;
 	int DecayTime;
+
+	// [DISDAIN]
+	bool DeathmatchOnly;
 };
 
 struct FDecalColorerAnim : public FDecalAnimator
@@ -565,6 +568,9 @@ void FDecalLib::ParseFader (FScanner &sc)
 	FString faderName;
 	int startTime = 0, decayTime = 0;
 
+	// [DISDAIN]
+	bool deathmatchOnly = false;
+
 	sc.MustGetString ();
 	faderName = sc.String;
 	sc.MustGetStringName ("{");
@@ -577,6 +583,7 @@ void FDecalLib::ParseFader (FScanner &sc)
 			FDecalFaderAnim *fader = new FDecalFaderAnim (faderName.GetChars());
 			fader->DecayStart = startTime;
 			fader->DecayTime = decayTime;
+			fader->DeathmatchOnly  = deathmatchOnly; // [DISDAIN]
 			Animators.Push (fader);
 			break;
 		}
@@ -589,6 +596,10 @@ void FDecalLib::ParseFader (FScanner &sc)
 		{
 			sc.MustGetFloat ();
 			decayTime = (int)(sc.Float * TICRATE);
+		}
+		else if (sc.Compare("DeathmatchOnly")) // [DISDAIN]
+		{
+			deathmatchOnly = true;
 		}
 		else
 		{
@@ -1085,6 +1096,10 @@ DThinker *FDecalFaderAnim::CreateThinker (DBaseDecal *actor, side_t *wall) const
 	fader->TimeToStartDecay = Level->maptime + DecayStart;
 	fader->TimeToEndDecay = fader->TimeToStartDecay + DecayTime;
 	fader->StartTrans = -1;
+
+	// [DISDAIN]
+	fader->DeathmatchOnly = DeathmatchOnly;
+
 	return fader;
 }
 

@@ -49,7 +49,8 @@ void DDecalFader::Serialize(FSerializer &arc)
 	Super::Serialize (arc);
 	arc("starttime", TimeToStartDecay)
 		("endtime", TimeToEndDecay)
-		("starttrans", StartTrans);
+		("starttrans", StartTrans)
+		("deathmatchonly", DeathmatchOnly); // [DISDAIN]
 }
 
 void DDecalFader::Tick ()
@@ -61,6 +62,10 @@ void DDecalFader::Tick ()
 	else
 	{
 		if (Level->maptime < TimeToStartDecay || Level->isFrozen())
+		{
+			return;
+		}
+		else if (DeathmatchOnly && !deathmatch) // [DISDAIN]
 		{
 			return;
 		}
