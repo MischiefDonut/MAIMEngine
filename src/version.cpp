@@ -34,6 +34,8 @@
 #include "versioninfo.h"
 #include "zstring.h"
 
+#include "vm.h" // [DISDAIN]
+
 //==========================================================================
 //
 // <Tag>-<Distance>+<commit>
@@ -258,4 +260,11 @@ VersionInfo::operator std::string() const
 {
 	FString tmp = FString(*this);
 	return tmp.GetChars();
+}
+
+// [DISDAIN]
+DEFINE_ACTION_FUNCTION(DObject, GetVersionString)
+{
+	PARAM_PROLOGUE;
+	ACTION_RETURN_STRING(GetVersionString());
 }
