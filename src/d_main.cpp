@@ -4221,6 +4221,9 @@ void SignalHandler(int signal)
 
 int GameMain()
 {
+	// [DISDAIN]
+	Args->RemoveArgs(FArg_iwad);
+
 	// On Windows, prefer the native win32 backend.
 	// On other platforms, use SDL until the other backends are more mature.
 	auto zwidget = DisplayBackend::TryCreateWin32();

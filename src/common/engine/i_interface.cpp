@@ -54,13 +54,13 @@ bool			pauseext;
 FStartupInfo GameStartupInfo;
 
 CVAR(Bool, vid_fps, false, 0)
-CVAR(Bool, queryiwad, QUERYIWADDEFAULT, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(Bool, queryiwad, QUERYIWADDEFAULT, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOSET) // [DISDAIN]
 CVAR(Bool, saveargs, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool, savenetfile, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool, savenetargs, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(String, defaultiwad, "", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(String, defaultiwad, "DISDAIN", CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOSET) // [DISDAIN]
 CVAR(String, defaultargs, "", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(String, defaultnetiwad, "", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CVAR(String, defaultnetiwad, "DISDAIN", CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOSET) // [DISDAIN]
 CVAR(String, defaultnetargs, "", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int, defaultnetplayers, 8, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int, defaultnethostport, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
