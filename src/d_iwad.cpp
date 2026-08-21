@@ -487,12 +487,13 @@ void FIWadManager::CollectSearchPaths()
 		}
 	}
 
-	if (i_searchdistributors)
+	// [DISDAIN] intentionally no-op this
+	/*if (i_searchdistributors)
 	{
 		mSearchPaths.Append(I_GetGogPaths());
 		mSearchPaths.Append(D_GetSteamGamePaths());
 		mSearchPaths.Append(I_GetBethesdaPath());
-	}
+	}*/
 
 	// Unify and remove trailing slashes
 	for (auto &str : mSearchPaths)
