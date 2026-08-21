@@ -1,7 +1,7 @@
 # UZDoom ZScript Source Code Documentation
 
 This is the documentation for the internal ZScript code within the UZDoom
-engine, distributed with the engine via `uzdoom.pk3` - that's the stuff that
+engine, distributed with the engine via `engine.pk3` - that's the stuff that
 you, as a modder, need to interact with!
 
 These pages therefore serve as a reference for all of the API surface in the

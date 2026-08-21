@@ -98,7 +98,7 @@ FString M_GetAppDataPath(bool create)
 		path = progdir;
 	}
 
-	path += "/" GAMENAMELOWERCASE;
+	path += "/" GAMENAME;
 	if (create) CreatePath(path.GetChars());
 	return path;
 }
@@ -171,7 +171,7 @@ FString M_GetConfigPath(bool for_reading)
 		}
 	}
 
-	return path + GAMENAMELOWERCASE ".ini";
+	return path + GAMENAME ".ini";
 }
 
 //===========================================================================

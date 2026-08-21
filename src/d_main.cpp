@@ -163,7 +163,7 @@ FARG(oldsprites, "Configuration", "Prevents the game from renaming sprites.", ""
 	" replaced a few select sprites, you do not need this.");
 FARG(iwad, "Configuration", "Specifies primary game file", "iwadfile[.wad]",
 	"The IWAD file specified after this parameter will be used as the game IWAD file.\n" GAMENAME
-	" will look for the IWAD in the current directory, in the same directory as " GAMENAMELOWERCASE
+	" will look for the IWAD in the current directory, in the same directory as " GAMENAME
 	".exe, in the directory set in the DOOMWADDIR environment variable, and in the directory set"
 	" in the HOME environment variable. (Verification needed)");
 FARG(savedir, "Configuration", "Sets an alternate directory for saving game files.", "path",
@@ -192,8 +192,8 @@ FARG(file, "Loading", "Loads one or more custom PWAD files.", "file1[.wad] file2
 	" further right take precedence to files listed before them, so as an example, if both"
 	" file1.wad and file2.wad contain have a MAP01, the MAP01 in file2.wad will be used instead of"
 	" the one in file1.wad. If the .wad extension is omitted, " GAMENAME " will automatically add"
-	" it.\nUsing this parameter is no longer needed, " GAMENAMELOWERCASE " file1.wad file2.wad"
-	" file3.wad will work just as well as " GAMENAMELOWERCASE " -file file1.wad file2.wad"
+	" it.\nUsing this parameter is no longer needed, " GAMENAME " file1.wad file2.wad"
+	" file3.wad will work just as well as " GAMENAME " -file file1.wad file2.wad"
 	" file3.wad.");
 FARG_ADVANCED(optfile, "Loading", "file1[.wad] file2[.wad] ...",
 	"Same as -file, but it will ignore missing files and not check them over the net for multiplayer games");

@@ -434,7 +434,7 @@ void FSoundFontManager::CollectSoundfonts()
 
 	if (soundfonts.Size() == 0)
 	{
-		FString path = NicePath("$PROGDIR/soundfonts/" GAMENAMELOWERCASE ".sf2");
+		FString path = NicePath("$PROGDIR/soundfonts/" GAMENAME ".sf2");
 		ProcessOneFile((prefix / path).GetChars());
 		ProcessOneFile(path.GetChars());
 	}

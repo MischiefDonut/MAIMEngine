@@ -72,29 +72,29 @@
 #define SAVEVER 4560
 
 // This is so that derivates can use the same savegame versions without worrying about engine compatibility
-#define GAMESIG "UZDOOM"
+#define GAMESIG "DISDAIN"
 
 // list of compatible ports, ex.:
 // #define ALLOWLOADIN "PORT1", "PORT2", "PORT3"
-#define ALLOWLOADIN "LZDOOM"
+#define ALLOWLOADIN ""
 
 #ifndef LOAD_GZDOOM_4142_SAVES
 	#define LOAD_GZDOOM_4142_SAVES 1
 #endif
 
-#define BASEWAD "uzdoom.pk3"
+#define BASEWAD "engine.pk3"
 // Set OPTIONALWAD to "" (null) to disable searching for it
-#define OPTIONALWAD "game_support.pk3"
+#define OPTIONALWAD ""
 #define GZDOOM 1
 #define VR3D_ENABLED
 
 // More stuff that needs to be different for derivatives.
-#define GAMENAME "UZDoom"
-#define WGAMENAME L"UZDoom"
-#define GAMENAMELOWERCASE "uzdoom"
-#define APPID "org.zdoom.UZDoom"
-#define QUERYIWADDEFAULT true
-#define BUGS_URL "https://github.com/UZDoom/UZDoom/issues"
+#define GAMENAME "DISDAIN"
+#define WGAMENAME L"DISDAIN"
+#define GAMENAMELOWERCASE "disdain"
+#define APPID "com.mischiefdonut.disdain"
+#define QUERYIWADDEFAULT false
+#define BUGS_URL "https://www.mischiefdonut.com/forum/disdain/bugs"
 
 #define UPDATER_URL "https://zdoom.org/uzdoom-updates.php?r={}&f={}"
 #define UPDATER_URL_BACKUP "https://github.com/UZDoom/UZDoom/releases/{}/{}/{}"

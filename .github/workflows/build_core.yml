@@ -287,7 +287,7 @@ jobs:
         mkdir package
         7z a package/licenses.zip ../docs/licenses/*
 
-        echo "name=${{ runner.os }}-$(uname -m)-UZDoom-$(git describe --tags --exclude x-*)" | tee -a "$GITHUB_OUTPUT"
+        echo "name=${{ runner.os }}-$(uname -m)-DISDAIN-$(git describe --tags --exclude x-*)" | tee -a "$GITHUB_OUTPUT"
 
     - name: Package Windows
       if: runner.os == 'Windows'
@@ -312,7 +312,7 @@ jobs:
         rm -rf soundfonts fm_banks
 
         mkdir -p package/soundfonts
-        cp -f ../soundfont/uzdoom.sf2 package/soundfonts
+        cp -f ../soundfont/DISDAIN.sf2 package/soundfonts
 
         mkdir -p package/fm_banks
         cp -f ../fm_banks/GENMIDI.GS.wopl ../fm_banks/gs-by-papiezak-and-sneakernets.wopn package/fm_banks
@@ -331,16 +331,16 @@ jobs:
       env:
         NAME: ${{ steps.package.outputs.name }}
       run: |
-        if [[ ! -d uzdoom.app ]] && [[ -d ${{ inputs.build_type }}/uzdoom.app ]]; then
-          mv ${{ inputs.build_type }}/uzdoom.app uzdoom.app
+        if [[ ! -d disdain.app ]] && [[ -d ${{ inputs.build_type }}/disdain.app ]]; then
+          mv ${{ inputs.build_type }}/disdain.app disdain.app
         fi
 
-        app=UZDoom.app
-        mv uzdoom.app ${app}
+        app=DISDAIN.app
+        mv disdain.app ${app}
         mv package/licenses.zip ${app}/Contents/Resources
 
-        if dsymutil ${app}/Contents/MacOS/uzdoom; then
-          mv ${app}/Contents/MacOS/uzdoom.dSYM ${app}/Contents/Resources/
+        if dsymutil ${app}/Contents/MacOS/disdain; then
+          mv ${app}/Contents/MacOS/disdain.dSYM ${app}/Contents/Resources/
         fi
 
         SIGN_ID="-"
@@ -364,7 +364,7 @@ jobs:
         cp -L $(brew --prefix sdl3)/lib/libSDL3.dylib ${app}/Contents/Frameworks/libSDL3.dylib
         cp $(brew --prefix molten-vk)/lib/libMoltenVK.dylib ${app}/Contents/Frameworks/
         dylibbundler -ns -of -cd -b \
-          -x ./${app}/Contents/MacOS/uzdoom \
+          -x ./${app}/Contents/MacOS/disdain \
           -d ./${app}/Contents/Frameworks \
           -p @executable_path/../Frameworks/
 
@@ -380,8 +380,8 @@ jobs:
         $(brew --prefix python)/bin/python3 -m venv venv
         source venv/bin/activate
         pip install dmgbuild
-        dmgbuild -s ../tools/dmgbuild-settings.py -D app=${app} "UZDoom" UZDoom.dmg
-        mv UZDoom.dmg package
+        dmgbuild -s ../tools/dmgbuild-settings.py -D app=${app} "DISDAIN" DISDAIN.dmg
+        mv DISDAIN.dmg package
 
         cd ..
 
@@ -395,7 +395,7 @@ jobs:
         REPO: ${{ github.event.repository.name }}
         TAG: ${{ inputs.environment == 'stable' && 'latest' || 'latest-pre' }}
       run: |
-        ldd uzdoom
+        ldd DISDAIN
 
         appdir=AppDir
         pfx=$(realpath $appdir)/usr
@@ -406,7 +406,7 @@ jobs:
 
         # this is actually in the correct place, but the appimage linter complains
         # copying it for now, just in case some tooling wants it there
-        mv "${pfx}/share/metainfo/org.zdoom.UZDoom.metainfo.xml" "${pfx}/share/metainfo/org.zdoom.UZDoom.appdata.xml"
+        mv "${pfx}/share/metainfo/com.mischiefdonut.disdain.metainfo.xml" "${pfx}/share/metainfo/com.mischiefdonut.disdain.appdata.xml"
 
         # cleanup
         {
@@ -415,7 +415,7 @@ jobs:
         } | xargs printf 'deleting: %s\n'
 
         # https://github.com/linuxdeploy/linuxdeploy-plugin-appimage
-        export LDAI_UPDATE_INFORMATION="gh-releases-zsync|${OWNER}|${REPO}|${TAG}|Linux-UZDoom-*-${arch}.AppImage.zsync"
+        export LDAI_UPDATE_INFORMATION="gh-releases-zsync|${OWNER}|${REPO}|${TAG}|Linux-DISDAIN-*-${arch}.AppImage.zsync"
         export LDAI_RUNTIME_FILE=./appimage-runtime
 
         # our metainfo file is correct, but for some reason the checker crashes on it
@@ -433,10 +433,10 @@ jobs:
         chmod +x linuxdeploy
         ./linuxdeploy --output appimage \
           --appdir $appdir \
-          --executable="${pfx}/bin/uzdoom" \
-          --desktop-file="${pfx}/share/applications/org.zdoom.UZDoom.desktop" \
+          --executable="${pfx}/bin/DISDAIN" \
+          --desktop-file="${pfx}/share/applications/com.mischiefdonut.disdain.desktop" \
           --library "$(library libopenal.so.)" \
-          --icon-file="${pfx}/share/icons/hicolor/scalable/apps/org.zdoom.UZDoom.svg"
+          --icon-file="${pfx}/share/icons/hicolor/scalable/apps/com.mischiefdonut.disdain.svg"
 
         mv *.AppImage "package/${NAME}.AppImage"
         mv *.zsync "package/${NAME}.AppImage.zsync"

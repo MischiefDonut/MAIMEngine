@@ -79,9 +79,9 @@ jobs:
             fi
           }
 
-          move artifacts/Windows\ Release/*.zip Windows-UZDoom-${{ inputs.title }}-x86_64.zip windows
-          move artifacts/MacOS\ Release/*.dmg MacOS-UZDoom-${{ inputs.title }}-ARM64.dmg macos
-          appimage=Linux-UZDoom-${{ inputs.title }}-x86_64.AppImage
+          move artifacts/Windows\ Release/*.zip Windows-DISDAIN-${{ inputs.title }}-x86_64.zip windows
+          move artifacts/MacOS\ Release/*.dmg MacOS-DISDAIN-${{ inputs.title }}-ARM64.dmg macos
+          appimage=Linux-DISDAIN-${{ inputs.title }}-x86_64.AppImage
           move artifacts/Linux\ Release/*.AppImage ${appimage} linux
           move artifacts/Linux\ Release/*.zsync ${appimage}.zsync _
 
@@ -164,7 +164,7 @@ jobs:
       - name: Upload
         uses: softprops/action-gh-release@v2.5.0 # FIXME: update this
         with:
-          name: UZDoom ${{ inputs.title }}
+          name: DISDAIN ${{ inputs.title }}
           tag_name: ${{ inputs.tag-name }}
           draft: ${{ ! inputs.preview }}
           prerelease: ${{ inputs.preview }}

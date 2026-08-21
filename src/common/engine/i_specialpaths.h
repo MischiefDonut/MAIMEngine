@@ -34,7 +34,7 @@ const char * GetDataPath();
 #endif
 
 FString M_GetAppDataPath(bool create);
-FString M_GetCachePath(bool create, FString ns = GAMENAMELOWERCASE);
+FString M_GetCachePath(bool create, FString ns = GAMENAME);
 FString M_GetAutoexecPath();
 FString M_GetConfigPath(bool for_reading);
 FString M_GetScreenshotsPath();

@@ -796,13 +796,13 @@ int FIWadManager::IdentifyVersion (std::vector<FileSys::ResourceName>&wadfiles, 
 
 #if defined(_WIN32)
 		gamedir = "Documents\\My Games\\" GAMENAME "\\";
-		cfgfile = GAMENAMELOWERCASE "-[username].ini"; // I kinda want to grab the actual username here from windows
+		cfgfile = GAMENAME "-[username].ini"; // I kinda want to grab the actual username here from windows
 #elif defined(__APPLE__)
-		gamedir = "~/Library/Application Support/" GAMENAMELOWERCASE "/";
-		cfgfile = "~/Library/Preferences/" GAMENAMELOWERCASE ".ini";
+		gamedir = "~/Library/Application Support/" GAMENAME "/";
+		cfgfile = "~/Library/Preferences/" GAMENAME ".ini";
 #else
 		auto gd = M_GetAppDataPath(true);
-		auto cd = FStringf("%s/" GAMENAMELOWERCASE ".ini", GetConfigPath());
+		auto cd = FStringf("%s/" GAMENAME ".ini", GetConfigPath());
 		gd.Substitute("$HOME/", "~/");
 		cd.Substitute("$HOME/", "~/");
 		gamedir = gd.GetChars();
@@ -811,9 +811,9 @@ int FIWadManager::IdentifyVersion (std::vector<FileSys::ResourceName>&wadfiles, 
 		extrasteps = "\n3. Validate your Flatpak permissions, so that Flatpak has access to your directories with wads\n";
 #	endif
 #endif
-
+		// [DISDAIN]
 		I_FatalError(
-			"Cannot find a game IWAD (doom.wad, heretic.wad, etc)!\n"
+			"Cannot find DISDAIN.ipk3!\n"
 			"Did you install " GAMENAME " properly?\n"
 			"\n"
 			"You can do any of the following:\n"

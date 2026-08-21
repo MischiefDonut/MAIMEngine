@@ -219,7 +219,7 @@ int DoMain(int argc, char** argv)
 	// Otherwise fall back to the MacOS directory (for development builds)
 	if (resourcePath != nil)
 	{
-		NSString* basewadPath = [resourcePath stringByAppendingPathComponent:@"uzdoom.pk3"];
+		NSString* basewadPath = [resourcePath stringByAppendingPathComponent:@"engine.pk3"]; // [DISDAIN]
 		if ([[NSFileManager defaultManager] fileExistsAtPath:basewadPath])
 		{
 			progdir = [resourcePath UTF8String];

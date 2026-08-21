@@ -137,7 +137,7 @@ static void CollectDefaultSearchPaths()
 #else
 
 	static FString GameDirs[] = {
-		"/games/" GAMENAMELOWERCASE,
+		"/games/" GAMENAME,
 		"/games/doom",
 		"/doom"
 	};
