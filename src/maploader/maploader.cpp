@@ -66,8 +66,6 @@ FARG(blockmap, "Configuration", "Regenerates the map's BLOCKMAP.", "",
 	"Causes " GAMENAME " to ignore all the BLOCKMAP information a map provides and generate it"
 	" instead. This is equivalent to +set genblockmap 1.");
 
-FARG_ADVANCED(enablelightmaps, "Experimental", "", "");
-
 EXTERN_FARG(xlat);
 
 inline bool P_LoadBuildMap(uint8_t *mapdata, size_t len, FMapThing **things, int *numthings)
@@ -3343,9 +3341,6 @@ void MapLoader::LoadLightmap(MapData *map)
 	Level->LPWidth = 0;
 	Level->LPHeight = 0;
 
-	if (!Args->CheckParm(FArg_enablelightmaps))
-		return;		// this feature is still too early WIP to allow general access
-
 	if (!map->Size(ML_LIGHTMAP))
 		return;
 
@@ -3371,8 +3366,6 @@ void MapLoader::LoadLightmap(MapData *map)
 
 	if (numSurfaces == 0 || numTexCoords == 0 || numTexBytes == 0)
 		return;
-
-	Printf(PRINT_HIGH, "WARNING! Lightmaps are an experimental feature and are subject to change before being finalized. Do not expect this to work as-is in future releases of %s!\n", GAMENAME);
 
 	/*if (numSubsectors != Level->subsectors.Size())
 	{
