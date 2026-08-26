@@ -42,7 +42,7 @@ FVector3 LightProbe::CalculateColor(FLevelLocals* level) const
 	return result;
 }
 
-LightProbe* FindLightProbe(FLevelLocals* level, float x, float y, float z)
+LightProbe* FindLightProbe(FLevelLocals* level, float x, float y, float z, float floorz)
 {
 	LightProbe* foundprobe = nullptr;
 	if (level->LightProbes.Size() > 0)
@@ -64,14 +64,18 @@ LightProbe* FindLightProbe(FLevelLocals* level, float x, float y, float z)
 					for (int i = 0; i < cell.NumProbes; i++)
 					{
 						LightProbe* probe = cell.FirstProbe + i;
-						float dx = probe->X - x;
-						float dy = probe->Y - y;
-						float dz = probe->Z - z;
-						float dist = dx * dx + dy * dy + dz * dz;
-						if (!foundprobe || dist < lastdist)
+						// Check the probe isn't under the floor, which can happen with thin 3D floors
+						if (floorz < probe->Z)
 						{
-							foundprobe = probe;
-							lastdist = dist;
+							float dx = probe->X - x;
+							float dy = probe->Y - y;
+							float dz = probe->Z - z;
+							float dist = dx * dx + dy * dy + dz * dz;
+							if (!foundprobe || dist < lastdist)
+							{
+								foundprobe = probe;
+								lastdist = dist;
+							}
 						}
 					}
 				}
@@ -97,9 +101,19 @@ LightProbe* FindLightProbe(FLevelLocals* level, float x, float y, float z)
 	return foundprobe;
 }
 
-bool TryGetLightProbeColor(FLevelLocals* level, float x, float y, float z, FVector3& out)
+bool TryGetLightProbeColor(FLevelLocals* level, AActor* actor, FVector3& out)
 {
-	if (LightProbe* probe = FindLightProbe(level, x, y, z))
+	if (!actor)
+	{
+		return false;
+	}
+
+	return TryGetLightProbeColor(level, actor->X(), actor->Y(), actor->Center(), out, actor->floorz);
+}
+
+bool TryGetLightProbeColor(FLevelLocals* level, float x, float y, float z, FVector3& out, float floorz)
+{
+	if (LightProbe* probe = FindLightProbe(level, x, y, z, floorz))
 	{
 		out = probe->CalculateColor(level);
 		return true;

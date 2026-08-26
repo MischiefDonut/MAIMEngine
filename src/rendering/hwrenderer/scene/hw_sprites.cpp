@@ -178,12 +178,20 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 
 			if (di->Level->LightProbes.Size() > 0)
 			{
-				bool doLightProbe = (gl_light_particles && particle) || (gl_light_sprites && actor);
 				FVector3 probeColor;
-				FVector3 samplePosition = gl_light_particles && particle ? FVector3(x, y, z) : gl_light_sprites && actor ? FVector3(actor->X(), actor->Y(), actor->Center()) : FVector3();
-				if (doLightProbe && TryGetLightProbeColor(di->Level, samplePosition.X, samplePosition.Y, samplePosition.Z, probeColor))
+				if (gl_light_particles && particle)
 				{
-					state.SetLightProbe(probeColor.X, probeColor.Y, probeColor.Z);
+					if (TryGetLightProbeColor(di->Level, x, y, z, probeColor))
+					{
+						state.SetLightProbe(probeColor.X, probeColor.Y, probeColor.Z);
+					}
+				}
+				else if (gl_light_sprites && actor)
+				{
+					if (TryGetLightProbeColor(di->Level, actor, probeColor))
+					{
+						state.SetLightProbe(probeColor.X, probeColor.Y, probeColor.Z);
+					}
 				}
 			}
 		}
@@ -315,7 +323,7 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 			if (actor && di->Level->LightProbes.Size() > 0)
 			{
 				FVector3 probeColor;
-				if (TryGetLightProbeColor(di->Level, actor->X(), actor->Y(), actor->Center(), probeColor))
+				if (TryGetLightProbeColor(di->Level, actor, probeColor))
 				{
 					state.SetLightProbe(probeColor.X, probeColor.Y, probeColor.Z);
 				}
