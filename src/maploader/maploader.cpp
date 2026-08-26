@@ -3340,6 +3340,7 @@ void MapLoader::LoadLightmap(MapData *map)
 	Level->LPMinY = 0;
 	Level->LPWidth = 0;
 	Level->LPHeight = 0;
+	Level->LPCellSize = 32;
 
 	if (!map->Size(ML_LIGHTMAP))
 		return;
@@ -3362,6 +3363,7 @@ void MapLoader::LoadLightmap(MapData *map)
 	uint32_t numTexCoords = fr.ReadUInt32();
 	uint32_t numLightProbes = fr.ReadUInt32();
 	uint32_t numSubsectors = fr.ReadUInt32();
+	Level->LPCellSize = fr.ReadInt32();
 	uint32_t numTexBytes = numTextures * textureSize * textureSize * 3 * 2;
 
 	if (numSurfaces == 0 || numTexCoords == 0 || numTexBytes == 0)
