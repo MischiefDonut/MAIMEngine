@@ -1769,6 +1769,7 @@ struct LightProbe
 {
 	float X, Y, Z;
 	float Red, Green, Blue;
+	FVector3 CalculateColor(FLevelLocals* level) const;
 };
 
 struct LightProbeCell

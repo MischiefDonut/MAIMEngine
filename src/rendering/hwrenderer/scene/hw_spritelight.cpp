@@ -36,6 +36,12 @@ T smoothstep(const T edge0, const T edge1, const T x)
 	return t * t * (3.0 - 2.0 * t);
 }
 
+FVector3 LightProbe::CalculateColor(FLevelLocals* level) const
+{
+	FVector3 result = FVector3(Red, Green, Blue);
+	return result;
+}
+
 LightProbe* FindLightProbe(FLevelLocals* level, float x, float y, float z)
 {
 	LightProbe* foundprobe = nullptr;
@@ -91,6 +97,19 @@ LightProbe* FindLightProbe(FLevelLocals* level, float x, float y, float z)
 	return foundprobe;
 }
 
+bool TryGetLightProbeColor(FLevelLocals* level, float x, float y, float z, FVector3& out)
+{
+	if (LightProbe* probe = FindLightProbe(level, x, y, z))
+	{
+		out = probe->CalculateColor(level);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 //==========================================================================
 //
 // Sets a single light value from all dynamic lights affecting the specified location
@@ -105,12 +124,12 @@ void HWDrawInfo::GetDynSpriteLight(AActor *self, float x, float y, float z, FSec
 
 	out[0] = out[1] = out[2] = 0.f;
 
-	LightProbe* probe = FindLightProbe(Level, x, y, z);
-	if (probe)
+	FVector3 probeColor;
+	if (TryGetLightProbeColor(Level, x, y, z, probeColor))
 	{
-		out[0] = probe->Red;
-		out[1] = probe->Green;
-		out[2] = probe->Blue;
+		out[0] = probeColor.X;
+		out[1] = probeColor.Y;
+		out[2] = probeColor.Z;
 	}
 
 	// Go through both light lists
