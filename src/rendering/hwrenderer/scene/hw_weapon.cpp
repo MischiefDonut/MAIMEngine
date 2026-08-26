@@ -102,6 +102,7 @@ void HWDrawInfo::DrawPSprite(HUDSprite *huds, FRenderState &state)
 	state.SetObjectColor(0xffffffff);
 	state.SetAddColor(0);
 	state.SetDynLight(0, 0, 0);
+	state.SetLightProbe(0, 0, 0);
 	state.EnableBrightmap(false);
 }
 
@@ -744,13 +745,14 @@ void HWDrawInfo::PreparePlayerSprites2D(sector_t * viewsector, area_t in_area)
 		if (hudsprite.RenderStyle.BlendOp != STYLEOP_Shadow && Level->HasDynamicLights && !isFullbrightScene() && gl_light_sprites)
 		{
 			GetDynSpriteLight(playermo, nullptr, hudsprite.dynrgb);
-			FVector3 probeColor;
-			if (TryGetLightProbeColor(Level, (float)playermo->X(), (float)playermo->Y(), (float)playermo->Center(), probeColor))
-			{
-				hudsprite.dynrgb[0] = probeColor.X;
-				hudsprite.dynrgb[1] = probeColor.Y;
-				hudsprite.dynrgb[2] = probeColor.Z;
-			}
+		}
+
+		FVector3 probeColor;
+		if (TryGetLightProbeColor(Level, (float)playermo->X(), (float)playermo->Y(), (float)playermo->Center(), probeColor))
+		{
+			hudsprite.dynrgb[0] += probeColor.X;
+			hudsprite.dynrgb[1] += probeColor.Y;
+			hudsprite.dynrgb[2] += probeColor.Z;
 		}
 
 		if (!hudsprite.GetWeaponRect(this, psp, spos.X, spos.Y, player, min<double>(bobFrac, frac))) continue;
@@ -863,12 +865,13 @@ void HWDrawInfo::PreparePlayerSprites3D(sector_t * viewsector, area_t in_area)
 			{
 				GetDynSpriteLight(playermo, nullptr, hudsprite.dynrgb);
 			}
+
 			FVector3 probeColor;
 			if (TryGetLightProbeColor(playermo->Level, playermo->X(), playermo->Y(), playermo->Center(), probeColor))
 			{
-				hudsprite.dynrgb[0] = probeColor.X;
-				hudsprite.dynrgb[1] = probeColor.Y;
-				hudsprite.dynrgb[2] = probeColor.Z;
+				hudsprite.dynrgb[0] += probeColor.X;
+				hudsprite.dynrgb[1] += probeColor.Y;
+				hudsprite.dynrgb[2] += probeColor.Z;
 			}
 		}
 

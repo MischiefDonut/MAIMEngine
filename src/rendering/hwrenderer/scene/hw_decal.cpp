@@ -61,7 +61,11 @@ void HWDecal::DrawDecal(HWDrawInfo *di, FRenderState &state)
 		FVector3 probeColor;
 		if (TryGetLightProbeColor(di->Level, x, y, decal->GetRealZ(decal->Side) * 0.5, probeColor))
 		{
-			state.SetDynLight(probeColor.X, probeColor.Y, probeColor.Z);
+			state.SetLightProbe(probeColor.X, probeColor.Y, probeColor.Z);
+		}
+		else
+		{
+			state.SetLightProbe(0, 0, 0);
 		}
 	}
 
@@ -122,6 +126,7 @@ void HWDecal::DrawDecal(HWDrawInfo *di, FRenderState &state)
 	state.SetObjectColor(0xffffffff);
 	state.SetFog(fc, -1);
 	state.SetDynLight(0, 0, 0);
+	state.SetLightProbe(0, 0, 0);
 }
 
 //==========================================================================
