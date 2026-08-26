@@ -1424,6 +1424,16 @@ void HWWall::DoMidTexture(HWWallDispatcher *di, seg_t * seg, bool drawfogboundar
 	bool mirrory = false;
 	float rowoffset = 0;
 
+	if (seg->sidedef->lightmap)
+	{
+		uint8_t wallType = drawfogboundary ? RENDERWALL_M2SNF : RENDERWALL_M2S;
+		lightmap = &seg->sidedef->lightmap[wallType - RENDERWALL_TOP];
+	}
+	else
+	{
+		lightmap = nullptr;
+	}
+
 	//
 	//
 	// Get the base coordinates for the texture
@@ -1739,6 +1749,7 @@ void HWWall::DoMidTexture(HWWallDispatcher *di, seg_t * seg, bool drawfogboundar
 	glseg=glsave;
 	flags&=~(HWF_CLAMPX|HWF_CLAMPY|HWF_NOSPLITUPPER|HWF_NOSPLITLOWER);
 	RenderStyle = STYLE_Normal;
+	lightmap = nullptr;
 }
 
 
