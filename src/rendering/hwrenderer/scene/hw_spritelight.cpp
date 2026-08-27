@@ -108,7 +108,9 @@ bool TryGetLightProbeColor(FLevelLocals* level, AActor* actor, FVector3& out)
 		return false;
 	}
 
-	return TryGetLightProbeColor(level, actor->X(), actor->Y(), actor->Center(), out, actor->floorz);
+	DVector3 samplePos = actor->GetLightProbeSamplePosition(level->LPCellSize);
+
+	return TryGetLightProbeColor(level, samplePos.X, samplePos.Y, samplePos.Z, out, actor->floorz);
 }
 
 bool TryGetLightProbeColor(FLevelLocals* level, float x, float y, float z, FVector3& out, float floorz)

@@ -1726,6 +1726,20 @@ public:
 		return max(1., Distance2D(dest) / speed);
 	}
 
+	DVector3 GetLightProbeSamplePosition(double wallOffsetDist)
+	{
+		double zPos = __Pos.Z + Height / 2;
+
+		if (renderflags & RF_WALLSPRITE)
+		{
+			return DVector3(__Pos.X + Angles.Yaw.Cos() * wallOffsetDist, __Pos.Y + Angles.Yaw.Sin() * wallOffsetDist, zPos);
+		}
+		else
+		{
+			return DVector3(__Pos.X, __Pos.Y, zPos);
+		}
+	}
+
 	int GetLightLevel(sector_t* rendersector);
 	int ApplyDamageFactor(FName damagetype, int damage) const;
 	int GetModifiedDamage(FName damagetype, int damage, bool passive, AActor *inflictor, AActor *source, int flags, DAngle angle);
