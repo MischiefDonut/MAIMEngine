@@ -49,34 +49,29 @@ LightProbe* FindLightProbe(FLevelLocals* level, float x, float y, float z, float
 	{
 #if 1
 		double rcpCellSize = 1.0 / level->LPCellSize;
-		int gridCenterX = (int)std::floor(x * rcpCellSize) - level->LPMinX;
-		int gridCenterY = (int)std::floor(y * rcpCellSize) - level->LPMinY;
+		int gridX = (int)std::floor(x * rcpCellSize) - level->LPMinX;
+		int gridY = (int)std::floor(y * rcpCellSize) - level->LPMinY;
 		int gridWidth = level->LPWidth;
 		int gridHeight = level->LPHeight;
 		float lastdist = 0.0f;
-		for (int gridY = gridCenterY - 1; gridY <= gridCenterY + 1; gridY++)
+
+		if (gridX >= 0 && gridY >= 0 && gridX < gridWidth && gridY < gridHeight)
 		{
-			for (int gridX = gridCenterX - 1; gridX <= gridCenterX + 1; gridX++)
+			const LightProbeCell& cell = level->LPCells[gridX + (size_t)gridY * gridWidth];
+			for (int i = 0; i < cell.NumProbes; i++)
 			{
-				if (gridX >= 0 && gridY >= 0 && gridX < gridWidth && gridY < gridHeight)
+				LightProbe* probe = cell.FirstProbe + i;
+				// Check the probe isn't under the floor, which can happen with thin 3D floors
+				if (floorz < probe->Z)
 				{
-					const LightProbeCell& cell = level->LPCells[gridX + (size_t)gridY * gridWidth];
-					for (int i = 0; i < cell.NumProbes; i++)
+					float dx = probe->X - x;
+					float dy = probe->Y - y;
+					float dz = probe->Z - z;
+					float dist = dx * dx + dy * dy + dz * dz;
+					if (!foundprobe || dist < lastdist)
 					{
-						LightProbe* probe = cell.FirstProbe + i;
-						// Check the probe isn't under the floor, which can happen with thin 3D floors
-						if (floorz < probe->Z)
-						{
-							float dx = probe->X - x;
-							float dy = probe->Y - y;
-							float dz = probe->Z - z;
-							float dist = dx * dx + dy * dy + dz * dz;
-							if (!foundprobe || dist < lastdist)
-							{
-								foundprobe = probe;
-								lastdist = dist;
-							}
-						}
+						foundprobe = probe;
+						lastdist = dist;
 					}
 				}
 			}
