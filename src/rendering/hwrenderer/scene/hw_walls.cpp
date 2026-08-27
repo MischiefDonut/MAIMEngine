@@ -1655,7 +1655,33 @@ void HWWall::DoMidTexture(HWWallDispatcher *di, seg_t * seg, bool drawfogboundar
 		// mid textures on portal lines need the same offsetting as mid textures on sky lines
 		flags |= HWF_SKYHACK;
 	}
-	SetWallCoordinates(seg, &tci, texturetop, topleft, topright, bottomleft, bottomright, t_ofs, skew, nullptr);
+
+	float preclip_topleft = bch1;
+	float preclip_topright = bch2;
+	float preclip_bottomleft = bfh1;
+	float preclip_bottomright = bfh2;
+
+	float cliphl = preclip_topleft - preclip_bottomleft;
+	float cliphr = preclip_topright - preclip_bottomright;
+
+	float clipOfs[4] = { 0 };
+
+	if (!wrap) // Don't clip wrapped midtexture lightmap coords, since they take up the full space
+	{
+		if (cliphl != 0)
+		{
+			clipOfs[UPLFT] = (topleft - preclip_topleft) / cliphl;
+			clipOfs[LOLFT] = (bottomleft - preclip_bottomleft) / cliphl;
+		}
+
+		if (cliphr != 0)
+		{
+			clipOfs[UPRGT] = (topright - preclip_topright) / cliphr;
+			clipOfs[LORGT] = (bottomright - preclip_bottomright) / cliphr;
+		}
+	}
+
+	SetWallCoordinates(seg, &tci, texturetop, topleft, topright, bottomleft, bottomright, t_ofs, skew, clipOfs);
 
 	//
 	//
