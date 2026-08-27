@@ -35,6 +35,7 @@ PFNGLVERTEXATTRIBIPOINTERPROC glVertexAttribIPointer = NULL;
 PFNGLFENCESYNCPROC glFenceSync = NULL;
 PFNGLCLIENTWAITSYNCPROC glClientWaitSync = NULL;
 PFNGLDELETESYNCPROC glDeleteSync = NULL;
+PFNGLTEXIMAGE3DPROC glTexImage3D = NULL;
 
 #if defined _WIN32
 
@@ -146,6 +147,7 @@ namespace OpenGLESRenderer
 		glMapBufferRange = (PFNGLMAPBUFFERRANGEEXTPROC)LoadGLES2Proc("glMapBufferRange");
 		glUnmapBuffer = (PFNGLUNMAPBUFFEROESPROC)LoadGLES2Proc("glUnmapBuffer");
 		glVertexAttribIPointer = (PFNGLVERTEXATTRIBIPOINTERPROC)LoadGLES2Proc("glVertexAttribIPointer");
+		glTexImage3D = (PFNGLTEXIMAGE3DPROC)LoadGLES2Proc("glTexImage3D");
 
 		glFenceSync = (PFNGLFENCESYNCPROC)LoadGLES2Proc("glFenceSync");
 		glClientWaitSync = (PFNGLCLIENTWAITSYNCPROC)LoadGLES2Proc("glClientWaitSync");
@@ -223,6 +225,7 @@ namespace OpenGLESRenderer
 			gles.npotAvailable = CheckExtension("GL_OES_texture_npot");
 			gles.depthClampAvailable = CheckExtension("GL_EXT_depth_clamp");
 			gles.anistropicFilterAvailable = CheckExtension("GL_EXT_texture_filter_anisotropic");
+			gles.lightmapsAvailable = false; // Disable for non-desktop for now
 		}
 		else if (gles.glesMode == GLES_MODE_OGL2)
 		{
@@ -234,6 +237,7 @@ namespace OpenGLESRenderer
 			gles.useMappedBuffers = true;
 			gles.depthClampAvailable = true;
 			gles.anistropicFilterAvailable = true;
+			gles.lightmapsAvailable = false; // TO DO: enable when it's actually working
 		}
 		else if (gles.glesMode == GLES_MODE_OGL3)
 		{
@@ -245,6 +249,7 @@ namespace OpenGLESRenderer
 			gles.useMappedBuffers = true;
 			gles.depthClampAvailable = true;
 			gles.anistropicFilterAvailable = true;
+			gles.lightmapsAvailable = false; // TO DO: enable when it's actually working
 		}
 
 		setGlVersion(glVersion);
