@@ -471,7 +471,7 @@ vec4 getLightColor(Material material, float fogdist, float fogfactor)
 	//
 	if (vLightmap.z >= 0.0)
 	{
-		color.rgb += texture(LightMap, vLightmap).rgb;
+		color.rgb += desaturate(texture(LightMap, vLightmap)).rgb;
 	}
 #endif
 
