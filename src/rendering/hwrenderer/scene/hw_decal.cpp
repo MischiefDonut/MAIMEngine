@@ -52,6 +52,7 @@ void HWDecal::DrawDecal(HWDrawInfo *di, FRenderState &state)
 
 	state.SetLightIndex(dynlightindex);
 
+#if 0
 	// add light probe contribution
 	if (di->Level->LightProbes.Size() > 0)
 	{
@@ -71,6 +72,7 @@ void HWDecal::DrawDecal(HWDrawInfo *di, FRenderState &state)
 			state.SetLightProbe(0, 0, 0);
 		}
 	}
+#endif
 
 	state.SetTextureMode(decal->RenderStyle);
 	state.SetRenderStyle(decal->RenderStyle);
@@ -129,7 +131,9 @@ void HWDecal::DrawDecal(HWDrawInfo *di, FRenderState &state)
 	state.SetObjectColor(0xffffffff);
 	state.SetFog(fc, -1);
 	state.SetDynLight(0, 0, 0);
+#if 0
 	state.SetLightProbe(0, 0, 0);
+#endif
 }
 
 //==========================================================================
@@ -195,6 +199,11 @@ void HWWall::DrawDecalsForMirror(HWDrawInfo *di, FRenderState &state, TArray<HWD
 //
 //
 //==========================================================================
+
+static float mix(float a, float b, float t)
+{
+	return a * (1.0f - t) + b * t;
+}
 
 void HWWall::ProcessDecal(HWDrawInfo *di, DBaseDecal *decal, const FVector3 &normal)
 {
@@ -342,6 +351,30 @@ void HWWall::ProcessDecal(HWDrawInfo *di, DBaseDecal *decal, const FVector3 &nor
 	dv[LR].u = dv[UR].u = righttex / decalscale;
 	dv[LL].v = dv[LR].v = 1.f;
 
+	// lightmap texture index
+	for (i = 0; i < 4; i++)
+	{
+		dv[i].lindex = lindex;
+	}
+
+	// lightmap texture coordinates
+	float tleft = left / linelength;
+	float tright = right / linelength;
+	float tuplft = ztop[0] != zbottom[0] ? (dv[UL].z - zbottom[0]) / (ztop[0] - zbottom[0]) : 0.0f;
+	float tuprgt = ztop[1] != zbottom[1] ? (dv[UR].z - zbottom[1]) / (ztop[1] - zbottom[1]) : 0.0f;
+	float tlolft = ztop[0] != zbottom[0] ? (dv[LL].z - zbottom[0]) / (ztop[0] - zbottom[0]) : 0.0f;
+	float tlorgt = ztop[1] != zbottom[1] ? (dv[LR].z - zbottom[1]) / (ztop[1] - zbottom[1]) : 0.0f;
+
+	dv[LL].lu = mix(lightuv[LOLFT].u, lightuv[LORGT].u, tleft);
+	dv[LR].lu = mix(lightuv[LOLFT].u, lightuv[LORGT].u, tright);
+	dv[UL].lu = mix(lightuv[UPLFT].u, lightuv[UPRGT].u, tleft);
+	dv[UR].lu = mix(lightuv[UPLFT].u, lightuv[UPRGT].u, tright);
+
+	dv[LL].lv = mix(lightuv[LOLFT].v, lightuv[UPLFT].v, tlolft);
+	dv[LR].lv = mix(lightuv[LORGT].v, lightuv[UPRGT].v, tlorgt);
+	dv[UL].lv = mix(lightuv[LOLFT].v, lightuv[UPLFT].v, tuplft);
+	dv[UR].lv = mix(lightuv[LORGT].v, lightuv[UPRGT].v, tuprgt);
+
 	// now clip to the top plane
 	float vzt = (ztop[UL] - ztop[LL]) / linelength;
 	float topleft = ztop[LL] + vzt * left;
@@ -355,8 +388,12 @@ void HWWall::ProcessDecal(HWDrawInfo *di, DBaseDecal *decal, const FVector3 &nor
 	{
 		// decal has to be clipped at the top
 		// let texture clamping handle all extreme cases
-		dv[UL].v = (dv[UL].z - topleft) / (dv[UL].z - dv[LL].z)*dv[LL].v;
-		dv[UR].v = (dv[UR].z - topright) / (dv[UR].z - dv[LR].z)*dv[LR].v;
+		float t0 = (dv[UL].z - topleft) / (dv[UL].z - dv[LL].z);
+		float t1 = (dv[UR].z - topright) / (dv[UR].z - dv[LR].z);
+		dv[UL].v = t0 * dv[LL].v;
+		dv[UR].v = t1 * dv[LR].v;
+		dv[UL].lv = mix(dv[UL].lv, dv[LL].lv, t0);
+		dv[UR].lv = mix(dv[UR].lv, dv[LR].lv, t1);
 		dv[UL].z = topleft;
 		dv[UR].z = topright;
 	}
@@ -374,8 +411,12 @@ void HWWall::ProcessDecal(HWDrawInfo *di, DBaseDecal *decal, const FVector3 &nor
 	{
 		// decal has to be clipped at the bottom
 		// let texture clamping handle all extreme cases
-		dv[LL].v = (dv[UL].z - bottomleft) / (dv[UL].z - dv[LL].z)*(dv[LL].v - dv[UL].v) + dv[UL].v;
-		dv[LR].v = (dv[UR].z - bottomright) / (dv[UR].z - dv[LR].z)*(dv[LR].v - dv[UR].v) + dv[UR].v;
+		float t0 = (dv[UL].z - bottomleft) / (dv[UL].z - dv[LL].z);
+		float t1 = (dv[UR].z - bottomright) / (dv[UR].z - dv[LR].z);
+		dv[LL].v = t0 * (dv[LL].v - dv[UL].v) + dv[UL].v;
+		dv[LR].v = t1 * (dv[LR].v - dv[UR].v) + dv[UR].v;
+		dv[LL].lv = mix(dv[UL].lv, dv[LL].lv, t0);
+		dv[LR].lv = mix(dv[UR].lv, dv[LR].lv, t1);
 		dv[LL].z = bottomleft;
 		dv[LR].z = bottomright;
 	}
@@ -394,7 +435,8 @@ void HWWall::ProcessDecal(HWDrawInfo *di, DBaseDecal *decal, const FVector3 &nor
 	gldecal->texture = texture;
 	gldecal->decal = decal;
 
-	if (decal->RenderFlags & RF_FULLBRIGHT)
+	bool isFullbright = (decal->RenderFlags & RF_FULLBRIGHT);
+	if (isFullbright)
 	{
 		gldecal->lightlevel = 255;
 		gldecal->rellight = 0;
@@ -426,7 +468,9 @@ void HWWall::ProcessDecal(HWDrawInfo *di, DBaseDecal *decal, const FVector3 &nor
 
 	for (i = 0; i < 4; i++)
 	{
-		verts.first[i].Set(dv[i].x, dv[i].z, dv[i].y, dv[i].u, dv[i].v);
+		!isFullbright ?
+			verts.first[i].Set(dv[i].x, dv[i].z, dv[i].y, dv[i].u, dv[i].v, dv[i].lu, dv[i].lv, dv[i].lindex) :
+			verts.first[i].Set(dv[i].x, dv[i].z, dv[i].y, dv[i].u, dv[i].v, 0.0f, 0.0f, -1.0f);
 	}
 }
 
