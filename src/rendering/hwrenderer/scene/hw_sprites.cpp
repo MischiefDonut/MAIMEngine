@@ -23,7 +23,6 @@
 #include "r_sky.h"
 #include "r_utility.h"
 #include "a_pickups.h"
-#include "a_corona.h"
 #include "d_player.h"
 #include "g_levellocals.h"
 #include "events.h"
@@ -811,13 +810,11 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 		return;
 	}
 
-#if 0
 	if (thing->IsKindOf(NAME_Corona))
 	{
-		di->Coronas.Push(static_cast<ACorona*>(thing));
+		di->Coronas.Push(thing);
 		return;
 	}
-#endif
 
 	const auto &vp = di->Viewpoint;
 	AActor *camera = vp.camera;
