@@ -139,7 +139,7 @@ FString M_GetCachePath(bool create, FString ns)
 {
 	FString path = GetCachePath();
 
-	path += "/doom/" + ns;
+	path += "/DISDAIN/" + ns; // [DISDAIN] use our own cache directory
 	path = NicePath(path.GetChars());
 	if (create)
 	{

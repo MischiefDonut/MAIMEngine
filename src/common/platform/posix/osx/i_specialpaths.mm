@@ -120,7 +120,7 @@ FString M_GetCachePath(bool create, FString ns)
 		path = progdir;
 	}
 
-	path += "/doom/" + ns;
+	path += "/DISDAIN/" + ns; // [DISDAIN] use our own cache directory
 	if (create) CreatePath(path.GetChars());
 	return path;
 }
