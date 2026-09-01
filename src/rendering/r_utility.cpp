@@ -1248,10 +1248,12 @@ void R_SetupFrame(FRenderViewpoint& viewPoint, const FViewWindow& viewWindow, AA
 	viewPoint.ViewActor = viewPoint.showviewer ? nullptr : actor;
 }
 
-CUSTOM_CVAR(Float, maxviewpitch, 90.f, CVAR_ARCHIVE | CVAR_SERVERINFO)
+// [DISDAIN] cap the pitch to avoid bugs
+#define MAX_VIEW_PITCH 85.0f
+CUSTOM_CVAR(Float, maxviewpitch, MAX_VIEW_PITCH, CVAR_ARCHIVE | CVAR_SERVERINFO)
 {
-	if (self>90.f) self = 90.f;
-	else if (self<-90.f) self = -90.f;
+	if (self>MAX_VIEW_PITCH) self = MAX_VIEW_PITCH;
+	else if (self<-MAX_VIEW_PITCH) self = -MAX_VIEW_PITCH;
 	if (usergame)
 	{
 		// [SP] Update pitch limits to the netgame/gamesim.
