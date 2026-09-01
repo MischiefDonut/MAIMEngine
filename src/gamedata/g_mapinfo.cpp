@@ -257,6 +257,7 @@ void level_info_t::Reset()
 	else
 		flags2 = LEVEL2_LAXMONSTERACTIVATION;
 	flags3 = 0;
+	disdainLevelFlags = 0; // [DISDAIN]
 	LightningSound = "world/thunder";
 	Music = "";
 	LevelName = "";
@@ -1787,6 +1788,9 @@ enum EMIType
 	MITYPE_SETFLAG3,
 	MITYPE_CLRFLAG3,
 	MITYPE_SCFLAGS3,
+	MITYPE_SETDISDAINLEVELFLAG, // [DISDAIN]
+	MITYPE_CLRDISDAINLEVELFLAG, // [DISDAIN]
+	MITYPE_SCDISDAINLEVELFLAG, // [DISDAIN]
 	MITYPE_COMPATFLAG,
 	MITYPE_CLRCOMPATFLAG,
 };
@@ -1895,6 +1899,8 @@ MapFlagHandlers[] =
 	{ "nofogofwar",						MITYPE_SETFLAG3,	LEVEL3_NOFOGOFWAR, 0 },
 	{ "useskymist",						MITYPE_SETFLAG3,	LEVEL3_SKYMIST, 0 },
 	{ "noambientocclusion",				MITYPE_SETFLAG3,	LEVEL3_NOAMBIENTOCCLUSION, 0 },
+	{ "nousersave",						MITYPE_SETDISDAINLEVELFLAG,	DISDAINLEVELFLAGS_NOUSERSAVE, 0 },	// [DISDAIN]
+	{ "noautomap",						MITYPE_SETDISDAINLEVELFLAG,	DISDAINLEVELFLAGS_NOAUTOMAP, 0 },	// [DISDAIN]
 	{ "nobotnodes",						MITYPE_IGNORE,	0, 0 },		// Skulltag option: nobotnodes
 	{ "nopassover",						MITYPE_COMPATFLAG, COMPATF_NO_PASSMOBJ, 0 },
 	{ "passover",						MITYPE_CLRCOMPATFLAG, COMPATF_NO_PASSMOBJ, 0 },
@@ -2051,6 +2057,30 @@ void FMapInfoParser::ParseMapDefinition(level_info_t &info)
 
 			case MITYPE_SCFLAGS3:
 				info.flags3 = (info.flags3 & handler->data2) | handler->data1;
+				break;
+
+			// [DISDAIN]
+			case MITYPE_SETDISDAINLEVELFLAG:
+				if (!CheckAssign())
+				{
+					info.disdainLevelFlags |= handler->data1;
+				}
+				else
+				{
+					sc.MustGetNumber();
+					if (sc.Number) info.disdainLevelFlags |= handler->data1;
+					else info.disdainLevelFlags &= ~handler->data1;
+				}
+				info.disdainLevelFlags |= handler->data2;
+				break;
+
+			case MITYPE_CLRDISDAINLEVELFLAG:
+				info.disdainLevelFlags &= ~handler->data1;
+				info.disdainLevelFlags |= handler->data2;
+				break;
+
+			case MITYPE_SCDISDAINLEVELFLAG:
+				info.disdainLevelFlags = (info.disdainLevelFlags & handler->data2) | handler->data1;
 				break;
 
 			case MITYPE_CLRCOMPATFLAG:

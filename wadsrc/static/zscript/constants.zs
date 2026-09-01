@@ -1451,6 +1451,10 @@ enum ELevelFlags
 	LEVEL3_SECRET				= 0x00200000,	// level is a secret level
 	LEVEL3_SKYMIST				= 0x00400000,   // level skyfog uses the skymist texture
 	LEVEL3_NOAMBIENTOCCLUSION	= 0x00800000,   // disables ambient occlusion on this map
+
+	// [DISDAIN]
+	DISDAINLEVELFLAGS_NOUSERSAVE		= 0x00000001,	// are saves disabled?
+	DISDAINLEVELFLAGS_NOAUTOMAP			= 0x00000002,	// is the automap disabled?
 };
 
 // [RH] Compatibility flags.

@@ -260,6 +260,10 @@ enum ELevelFlags : unsigned int
 	LEVEL3_SECRET				= 0x00200000,   // level is a secret level
 	LEVEL3_SKYMIST				= 0x00400000,   // level skyfog uses the skymist texture
 	LEVEL3_NOAMBIENTOCCLUSION	= 0x00800000,   // disables ambient occlusion on this map
+
+	// [DISDAIN]
+	DISDAINLEVELFLAGS_NOUSERSAVE	= 0x00000001,
+	DISDAINLEVELFLAGS_NOAUTOMAP		= 0x00000002,
 };
 
 
@@ -335,6 +339,9 @@ struct level_info_t
 	int32_t		flags;
 	uint32_t	flags2;
 	uint32_t	flags3;
+
+	// [DISDAIN]
+	uint32_t	disdainLevelFlags;
 
 	FString		LightningSound = "world/thunder";
 	FString		Music;

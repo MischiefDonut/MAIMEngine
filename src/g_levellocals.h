@@ -664,6 +664,8 @@ public:
 	uint32_t		flags2;
 	uint32_t		flags3;
 
+	uint32_t		disdainLevelFlags;		// [DISDAIN]
+
 	uint32_t		fadeto;					// The color the palette fades to (usually black)
 	uint32_t		outsidefog;				// The fog for sectors with sky ceilings
 

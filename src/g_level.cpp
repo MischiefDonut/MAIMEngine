@@ -1937,6 +1937,7 @@ void FLevelLocals::Init()
 	flags = 0;
 	flags2 = 0;
 	flags3 = 0;
+	disdainLevelFlags = 0; // [DISDAIN]
 	ImpactDecalCount = 0;
 	frozenstate = 0;
 
@@ -1992,6 +1993,7 @@ void FLevelLocals::Init()
 	flags |= info->flags;
 	flags2 |= info->flags2;
 	flags3 |= info->flags3;
+	disdainLevelFlags |= info->disdainLevelFlags; // [DISDAIN]
 	levelnum = info->levelnum;
 	LightningSound = info->LightningSound;
 	Music = info->Music;

@@ -2902,6 +2902,7 @@ DEFINE_FIELD_X(LevelInfo, level_info_t, sucktime)
 DEFINE_FIELD_X(LevelInfo, level_info_t, flags)
 DEFINE_FIELD_X(LevelInfo, level_info_t, flags2)
 DEFINE_FIELD_X(LevelInfo, level_info_t, flags3)
+DEFINE_FIELD_X(LevelInfo, level_info_t, disdainLevelFlags) // [DISDAIN]
 DEFINE_FIELD_X(LevelInfo, level_info_t, Music)
 DEFINE_FIELD_X(LevelInfo, level_info_t, LightningSound)
 DEFINE_FIELD_X(LevelInfo, level_info_t, LevelName)
@@ -3002,6 +3003,10 @@ DEFINE_FIELD_BIT(FLevelLocals, flags2, infinite_flight, LEVEL2_INFINITE_FLIGHT)
 DEFINE_FIELD_BIT(FLevelLocals, flags2, no_dlg_freeze, LEVEL2_CONV_SINGLE_UNFREEZE)
 DEFINE_FIELD_BIT(FLevelLocals, flags2, keepfullinventory, LEVEL2_KEEPFULLINVENTORY)
 DEFINE_FIELD_BIT(FLevelLocals, flags3, removeitems, LEVEL3_REMOVEITEMS)
+
+// [DISDAIN]
+DEFINE_FIELD_BIT(FLevelLocals, disdainLevelFlags, nousersave, DISDAINLEVELFLAGS_NOUSERSAVE)
+DEFINE_FIELD_BIT(FLevelLocals, disdainLevelFlags, noautomap, DISDAINLEVELFLAGS_NOAUTOMAP)
 
 DEFINE_FIELD_X(Sector, sector_t, floorplane)
 DEFINE_FIELD_X(Sector, sector_t, ceilingplane)

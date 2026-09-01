@@ -51,6 +51,9 @@
 #include "v_font.h"
 #include "vm.h"
 
+// [DISDAIN]
+#include "g_levellocals.h"
+
 EXTERN_CVAR(Int, cl_gfxlocalization)
 EXTERN_CVAR(Bool, m_quickexit)
 EXTERN_CVAR(Bool, saveloadconfirmation) // [mxd]
@@ -241,7 +244,7 @@ bool M_SetSpecialMenu(FName& menu, int param)
 		return false;
 
 	case NAME_SavegameMenu:
-		if (!usergame || (players[consoleplayer].health <= 0 && !multiplayer) || gamestate != GS_LEVEL)
+		if (!usergame || (players[consoleplayer].health <= 0 && !multiplayer) || gamestate != GS_LEVEL || (primaryLevel->disdainLevelFlags & DISDAINLEVELFLAGS_NOUSERSAVE)) // [DISDAIN]
 		{
 			// cannot save outside the game.
 			M_StartMessage (GStrings.GetString("SAVEDEAD"), 1);
@@ -495,6 +498,10 @@ CCMD (quicksave)
 		S_Sound (CHAN_VOICE, CHANF_UI|(haptics_do_menus?CHANF_RUMBLE:CHANF_NORUMBLE), "menu/invalid", snd_menuvolume, ATTN_NONE);
 		return;
 	}
+
+	// [DISDAIN]
+	if ((primaryLevel->disdainLevelFlags & DISDAINLEVELFLAGS_NOUSERSAVE))
+		return;
 
 	if (gamestate != GS_LEVEL)
 		return;

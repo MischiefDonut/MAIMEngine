@@ -2288,6 +2288,10 @@ CCMD(opensaves)
 
 void G_DoAutoSave ()
 {
+	// [DISDAIN]
+	if ((primaryLevel->disdainLevelFlags & DISDAINLEVELFLAGS_NOUSERSAVE))
+		return;
+
 	// Never autosave in netgames since you can't load this properly anyway.
 	if (netgame)
 		return;

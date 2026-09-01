@@ -1610,6 +1610,13 @@ void DAutomap::Ticker ()
 	if (!automapactive)
 		return;
 
+	// [DISDAIN]
+	if ((primaryLevel->disdainLevelFlags & DISDAINLEVELFLAGS_NOAUTOMAP))
+	{
+		AM_ToggleMap();
+		return;
+	}
+
 	amclock++;
 }
 
@@ -3568,6 +3575,10 @@ void AM_ToggleMap()
 	if (!primaryLevel || !primaryLevel->automap)
 		return;
 
+	// [DISDAIN]
+	if (!automapactive && (primaryLevel->disdainLevelFlags & DISDAINLEVELFLAGS_NOAUTOMAP))
+		return;
+
 	if (!automapactive)
 	{
 		// Reset AM buttons
@@ -3606,4 +3617,17 @@ DAutomapBase *AM_Create(FLevelLocals *Level)
 	auto am = Create<DAutomap>();
 	am->Level = Level;
 	return am;
+}
+
+//=============================================================================
+//
+// [DISDAIN]
+//
+//=============================================================================
+
+DEFINE_ACTION_FUNCTION(_Screen, CloseAutomap)
+{
+	PARAM_PROLOGUE;
+	AM_Stop();
+	return 0;
 }

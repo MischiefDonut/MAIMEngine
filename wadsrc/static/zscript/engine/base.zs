@@ -604,6 +604,9 @@ struct Screen native
 	native static double GetTextureHeight(TextureID texture, bool animated = false);
 	native static double GetTextureLeftOffset(TextureID texture, bool animated = false);
 	native static double GetTextureTopOffset(TextureID texture, bool animated = false);
+
+	// [DISDAIN]
+	native static ui void CloseAutomap();
 }
 
 struct Font native
