@@ -3358,6 +3358,13 @@ void DAutomap::Drawer (int bottom)
 	if (!automapactive)
 		return;
 
+	// [DISDAIN] Hide the automap if a menu is up
+	if (menuactive > MENU_Off)
+		return;
+
+	// [DISDAIN] Apply blur to the map background
+	screen->BlurScene(gameinfo.bluramount);
+
 	if (am_followplayer)
 	{
 		doFollowPlayer();
@@ -3402,8 +3409,11 @@ void DAutomap::Drawer (int bottom)
 		f_x = f_y = 0;
 		f_w = twod->GetWidth ();
 		f_h = bottom;
+		// [DISDAIN] Don't draw a solid background...
+		//clearFB(AMColors[AMColors.Background]);
 
-		clearFB(AMColors[AMColors.Background]);
+		// [DISDAIN] ... but a dimmed background instead
+		Dim(twod, AMColors[AMColors.Background].RGB, gameinfo.bluramount, f_x, f_y, f_w, f_h);
 	}
 	else
 	{
