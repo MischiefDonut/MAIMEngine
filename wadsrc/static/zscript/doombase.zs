@@ -618,6 +618,9 @@ struct LevelLocals native
 	native void setFrozen(bool on);
 	native string LookupString(uint index);
 
+	// [DISDAIN]
+	native void AddImpactDecal(Thinker decal);
+
 	native clearscope Sector PointInSector(Vector2 pt) const;
 
 	native clearscope bool IsPointInLevel(vector3 p) const;

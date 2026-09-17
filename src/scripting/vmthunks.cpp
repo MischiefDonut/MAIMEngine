@@ -2594,6 +2594,31 @@ DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, HasPossibleSight, HasPossibleSight)
 	ACTION_RETURN_BOOL(res);
 }
 
+// [DISDAIN]
+EXTERN_CVAR(Int, cl_maxdecals)
+static void AddImpactDecal(FLevelLocals* self, DThinker* decal)
+{
+	decal->ChangeStatNum(STAT_AUTODECAL);
+	if (++self->ImpactDecalCount >= cl_maxdecals)
+	{
+		DThinker* thinker = self->FirstThinker(STAT_AUTODECAL);
+		if (thinker != nullptr)
+		{
+			thinker->Destroy();
+			--self->ImpactDecalCount;
+		}
+	}
+}
+
+// [DISDAIN]
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, AddImpactDecal, AddImpactDecal)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_OBJECT_NOT_NULL(decal, DThinker);
+	AddImpactDecal(self, decal);
+	return 0;
+}
+
 DEFINE_ACTION_FUNCTION(FLevelLocals, GetDisplacement)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
