@@ -2027,9 +2027,11 @@ DEFINE_FIELD(AActor, special)
 DEFINE_FIELD(AActor, tid)
 DEFINE_FIELD(AActor, TIDtoHate)
 DEFINE_FIELD(AActor, waterlevel)
+DEFINE_FIELD(AActor, MinWaterLevel)	// [DISDAIN]
 DEFINE_FIELD(AActor, waterdepth)
 DEFINE_FIELD(AActor, watertop)		// [DISDAIN]
 DEFINE_FIELD(AActor, waterbottom)	// [DISDAIN]
+DEFINE_FIELD(AActor, WaterCheckSpeed) // [DISDAIN]
 DEFINE_FIELD(AActor, Score)
 DEFINE_FIELD(AActor, accuracy)
 DEFINE_FIELD(AActor, stamina)

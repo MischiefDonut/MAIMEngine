@@ -430,6 +430,8 @@ void AActor::Serialize(FSerializer &arc)
 		A("WorldOffset", WorldOffset)
 		("modelData", modelData)
 		A("LandingSpeed", LandingSpeed)
+		A("minwaterlevel", MinWaterLevel)		// [DISDAIN]
+		A("watercheckspeed", WaterCheckSpeed)	// [DISDAIN]
 		("unmorphtime", UnmorphTime)
 		("morphflags", MorphFlags)
 		("premorphproperties", PremorphProperties)
@@ -3022,7 +3024,7 @@ static void P_ZMovement (AActor *mo, double oldfloorz)
 // adjust height
 //
 	// DISDAIN]
-	if ((mo->flags & MF_FLOAT) && ShouldFloat(mo))
+	if (CanFloat(mo))
 	{	// float down towards target if too close
 		dist = mo->Distance2D (mo->target);
 		delta = (mo->target->Center()) - mo->Z();
@@ -3047,15 +3049,15 @@ static void P_ZMovement (AActor *mo, double oldfloorz)
 		}
 	}
 	// [DISDAIN]
-	if ((mo->DisdainFlags & DF_SWIM) && mo->waterlevel > 2 && fabs(mo->Vel.Z) <= mo->FloatSpeed && CanSwim(mo))
+	if ((mo->flags & MF_FLOAT) && fabs(mo->Vel.Z) <= GetWaterCheckSpeed(mo, true) && ShouldCheckLiquid(mo))
 	{
-		double newz = clamp(mo->Z(), mo->floorz, mo->ceilingz - mo->Height);
+		const double newz = clamp<double>(mo->Z(), mo->floorz, mo->ceilingz - mo->Height);
 
 		FWaterResults res;
 		P_UpdateWaterDepth({ mo->Pos().XY(), newz }, mo->Height, *mo->Sector, mo->Height, false, res);
-		if (res.level <= 2)
+		if (!IsValidWaterLevel(mo, res.level))
 		{
-			ClampWaterHeight(mo, newz, res);
+			ClampWaterHeight(mo, oldz, res);
 			mo->Vel.Z = 0.0;
 		}
 	}

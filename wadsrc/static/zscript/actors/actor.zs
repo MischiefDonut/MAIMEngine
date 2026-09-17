@@ -263,8 +263,10 @@ class Actor : Thinker native
 	native readonly int TID;
 	native readonly int TIDtoHate;
 	native readonly int WaterLevel;
+	native int MinWaterLevel; // [DISDAIN]
 	native readonly double WaterDepth;
 	native readonly double WaterTop, WaterBottom; // [DISDAIN]
+	native double WaterCheckSpeed; // [DISDAIN]
 	native int Score;
 	native int Accuracy;
 	native int Stamina;
@@ -481,6 +483,10 @@ class Actor : Thinker native
 	property LandingSpeed: LandingSpeed;
 	property MinRespawnTics: MinRespawnTics;
 	property RespawnDice: RespawnDice;
+
+	// [DISDAIN]
+	property MinWaterLevel: MinWaterLevel;
+	property WaterCheckSpeed: WaterCheckSpeed;
 
 	// need some definition work first
 	//FRenderStyle RenderStyle;

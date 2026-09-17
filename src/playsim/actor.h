@@ -444,8 +444,7 @@ enum ActorFlag9
 // [DISDAIN] Bespoke(tm) Features
 enum DisdainActorFlag
 {
-	DF_SWIM				= 0x00000001,	// [DISDAIN] Don't leave liquids when traversing
-	DF_GLIDESONWALLS	= 0x00000002,	// [DISDAIN] If the difference between the move and wall angle is small enough, glide along it instead of stopping.
+	DF_GLIDESONWALLS	= 0x00000001,	// [DISDAIN] If the difference between the move and wall angle is small enough, glide along it instead of stopping.
 };
 
 // --- mobj.renderflags ---
@@ -1290,6 +1289,8 @@ public:
 	int				waterlevel;		// 0=none, 1=feet, 2=waist, 3=eyes
 	double			waterdepth;		// Stores how deep into water you are, in map units
 	double			watertop, waterbottom; // [DISDAIN] Stores the Z positions of the water surfaces
+	int				MinWaterLevel;		// [DISDAIN] Try to avoid/stay in water
+	double			WaterCheckSpeed;	// [DISDAIN] Custom speed for checking liquids for the above
 	uint8_t			boomwaterlevel;	// splash information for non-swimmable water sectors
 	uint8_t			MinMissileChance;// [RH] If a random # is > than this, then missile attack.
 	int8_t			LastLookPlayerNumber;// Player number last looked for (if TIDtoHate == 0)
