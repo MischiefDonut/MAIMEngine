@@ -39,6 +39,7 @@ struct sector_t;
 struct msecnode_t;
 struct portnode_t;
 struct secplane_t;
+struct F3DFloor; // [DISDAIN]
 struct FCheckPosition;
 struct FTranslatedLineTarget;
 struct FLinePortal;
@@ -351,9 +352,11 @@ struct FWaterResults
 {
 	int level;
 	double depth;
-	double top, bot;
+	double top, bottom;
+	sector_t* sec;
+	F3DFloor* ffloor;
 };
-void	P_UpdateWaterDepth(const DVector3& pos, double height, const sector_t* sec, double viewHeight, bool splash, FWaterResults& res);
+void	P_UpdateWaterDepth(const DVector3& pos, double height, sector_t& sec, double viewHeight, bool splash, FWaterResults& res);
 
 struct FRailParams
 {

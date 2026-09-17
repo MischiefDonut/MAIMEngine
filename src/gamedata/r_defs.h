@@ -1113,6 +1113,7 @@ public:
 	DVector2 GetPortalDisplacement(int plane);
 	int GetPortalType(int plane);
 	int GetOppositePortalGroup(int plane);
+	sector_t* GetPortalDestination(int plane); // [DISDAIN]
 	void CheckOverlap();
 
 	void SetVerticesDirty()
