@@ -130,6 +130,31 @@ CUSTOM_CVAR (Float, sv_gravity, 800.f, CVAR_SERVERINFO|CVAR_NOSAVE|CVAR_NOINITCA
 	}
 }
 
+// [DISDAIN]
+CUSTOM_CVAR(Float, sv_coopmonsterhealthscale, 2.0f, CVAR_SERVERINFO | CVAR_NOINITCALL)
+{
+	if (!multiplayer)
+		return;
+
+	for (auto Level : AllLevels())
+	{
+		auto it = Level->GetThinkerIterator<AActor>(NAME_None, STAT_DEFAULT);
+		AActor* mo;
+
+		while ((mo = it.Next()))
+		{
+			if ((mo->flags3 & MF3_ISMONSTER) && !(mo->flags6 & MF6_KILLED) && mo->PrevSpawnHealth > 0)
+			{
+				double frac = double(mo->health) / mo->PrevSpawnHealth;
+
+				int spawnHealth = mo->SpawnHealth();
+				mo->health = (int)clamp(ceil(spawnHealth * frac), 1.0, double(INT_MAX));
+				mo->PrevSpawnHealth = spawnHealth;
+			}
+		}
+	}
+}
+
 CVAR (Bool, cl_missiledecals, true, CVAR_ARCHIVE)
 CVAR (Bool, addrocketexplosion, true, CVAR_ARCHIVE)
 CVAR (Int, cl_pufftype, 0, CVAR_ARCHIVE);
@@ -275,6 +300,7 @@ void AActor::Serialize(FSerializer &arc)
 		A("spawnpoint", SpawnPoint)
 		A("spawnangle", SpawnAngle)
 		A("starthealth", StartHealth)
+		A("prevspawnhealth", PrevSpawnHealth) // [DISDAIN]
 		A("skillrespawncount", skillrespawncount)
 		("tracer", tracer)
 		A("floorclip", Floorclip)
@@ -5435,6 +5461,7 @@ void ConstructActor(AActor *actor, const DVector3 &pos, bool SpawningMapThing)
 	actor->OldRenderPos = { FLT_MAX, FLT_MAX, FLT_MAX };
 	actor->picnum.SetInvalid();
 	actor->health = actor->SpawnHealth();
+	actor->PrevSpawnHealth = actor->health; // [DISDAIN]
 
 	// Actors with zero gravity need the NOGRAVITY flag set.
 	if (actor->Gravity == 0) actor->flags |= MF_NOGRAVITY;
@@ -8489,23 +8516,22 @@ void AActor::SetIdle(bool nofunction)
 	SetState(idle, nofunction);
 }
 
-int AActor::SpawnHealth() const
+int AActor::SpawnHealth() const // [DISDAIN]
 {
 	int defhealth = StartHealth ? StartHealth : GetDefault()->health;
 	if (!(flags3 & MF3_ISMONSTER) || defhealth == 0)
-	{
 		return defhealth;
-	}
-	else if (flags & MF_FRIENDLY)
-	{
-		int adj = int(defhealth * G_SkillProperty(SKILLP_FriendlyHealth));
-		return (adj <= 0) ? 1 : adj;
-	}
+
+	double hp;
+	if (flags & MF_FRIENDLY)
+		hp = defhealth * G_SkillProperty(SKILLP_FriendlyHealth);
 	else
-	{
-		int adj = int(defhealth * G_SkillProperty(SKILLP_MonsterHealth));
-		return (adj <= 0) ? 1 : adj;
-	}
+		hp = defhealth * G_SkillProperty(SKILLP_MonsterHealth);
+
+	if (multiplayer)
+		hp *= sv_coopmonsterhealthscale;
+
+	return (int)clamp(hp, 1.0, double(INT_MAX));
 }
 
 int AActor::GetMaxHealth(bool withupgrades) const
