@@ -167,6 +167,9 @@ class PlayerPawn : Actor
 	//
 	//===========================================================================
 
+	// [DISDAIN]
+	native void DoAimAssist();
+
 	override void Tick()
 	{
 		if (player != NULL && player.mo == self && CanCrouch() && player.playerstate != PST_DEAD)
@@ -193,6 +196,10 @@ class PlayerPawn : Actor
 			}
 		}
 		Super.Tick();
+
+		// [DISDAIN]
+		if (player != NULL && player.mo == self && !player.IsTotallyFrozen() && Vel.XY.Length() > 0.0)
+			DoAimAssist();
 	}
 
 	//===========================================================================

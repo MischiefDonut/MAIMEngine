@@ -1322,4 +1322,11 @@ xx(Hide)
 xx(GrayInv)
 xx(HideInv)
 
+// [DISDAIN]
+
+// aim assist CVar names
+xx(g_aimassist)
+xx(g_aimassiststrength)
+xx(g_aimassistprecision)
+
 // clang-format on

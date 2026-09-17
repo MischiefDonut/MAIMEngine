@@ -1211,6 +1211,9 @@ set (PCH_SOURCES
 	utility/nodebuilder/nodebuild_gl.cpp
 	utility/nodebuilder/nodebuild_utility.cpp
 	utility/system_theme.cpp
+
+	# [DISDAIN]
+	playsim/g_aimassist.cpp
 )
 
 if( ZMUSIC_SYSTEM_INSTALL OR NOT DEFINED BUILD_SHARED_LIBS OR BUILD_SHARED_LIBS)

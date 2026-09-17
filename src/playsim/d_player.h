@@ -290,6 +290,24 @@ struct userinfo_t : TMap<FName,FBaseCVar *>
 		return *static_cast<FBoolCVar *>(*CheckKey(NAME_Wi_NoAutostartMap));
 	}
 
+	// [DISDAIN]
+	bool GetAimAssistEnabled() const
+	{
+		return *static_cast<FBoolCVar *>(*CheckKey(NAME_g_aimassist));
+	}
+
+	// [DISDAIN]
+	double GetAimAssistStrength() const
+	{
+		return *static_cast<FFloatCVar *>(*CheckKey(NAME_g_aimassiststrength));
+	}
+
+	// [DISDAIN]
+	double GetAimAssistPrecision() const
+	{
+		return *static_cast<FFloatCVar *>(*CheckKey(NAME_g_aimassistprecision));
+	}
+
 	void Reset(int pnum);
 	int TeamChanged(int team);
 	int SkinChanged(const char *skinname, int playerclass);

@@ -7805,7 +7805,7 @@ void P_PlaySpawnSound(AActor *missile, AActor *spawner)
 {
 	if (missile->SeeSound != NO_SOUND)
 	{
-		if (!(missile->flags & MF_SPAWNSOUNDSOURCE))
+		if (!(missile->flags8 & MF8_SPAWNSOUNDSOURCE)) // [DISDAIN] had to move the flag location to accomodate the aim assist code
 		{
 			S_Sound (missile, CHAN_VOICE, 0, missile->SeeSound, 1, ATTN_NORM);
 		}

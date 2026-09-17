@@ -1080,7 +1080,7 @@ DEFINE_PROPERTY(clearflags, 0, Actor)
 DEFINE_PROPERTY(monster, 0, Actor)
 {
 	// sets the standard flags for a monster
-	defaults->flags|=MF_SHOOTABLE|MF_COUNTKILL|MF_SOLID;
+	defaults->flags|=MF_SHOOTABLE|MF_COUNTKILL|MF_SOLID|MF_AIMASSISTTARGET; // [DISDAIN] monsters get aim assisted by default
 	defaults->flags2|=MF2_PUSHWALL|MF2_MCROSS|MF2_PASSMOBJ;
 	defaults->flags3|=MF3_ISMONSTER;
 	defaults->flags4|=MF4_CANUSEWALLS;
