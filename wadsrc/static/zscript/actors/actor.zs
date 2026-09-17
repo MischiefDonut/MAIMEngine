@@ -333,6 +333,7 @@ class Actor : Thinker native
 	native double MaxDropoffHeight;
 	native double MaxStepHeight;
 	native double MaxSlopeSteepness;
+	native double MaxWallGlideAngle; // [DISDAIN]
 	native int16 PainChance;
 	native int MaxPain;		// [DISDAIN]
 	native int PainAmount;	// [DISDAIN]
@@ -449,6 +450,7 @@ class Actor : Thinker native
 	property MaxStepHeight: MaxStepHeight;
 	property MaxDropoffHeight: MaxDropoffHeight;
 	property MaxSlopeSteepness: MaxSlopeSteepness;
+	property MaxWallGlideAngle : MaxWallGlideAngle; // [DISDAIN]
 	property PoisonDamageType: PoisonDamageType;
 	property RadiusDamageFactor: RadiusDamageFactor;
 	property SelfDamageFactor: SelfDamageFactor;
@@ -518,6 +520,7 @@ class Actor : Thinker native
 		MaxDropoffHeight 24;
 		MaxStepHeight 24;
 		MaxSlopeSteepness STEEPSLOPE;
+		MaxWallGlideAngle 0.9848; // [DISDAIN]
 		BounceFactor 0.7;
 		WallBounceFactor 0.75;
 		BounceCount -1;

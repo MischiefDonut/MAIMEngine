@@ -345,6 +345,7 @@ void AActor::Serialize(FSerializer &arc)
 		A("missilestate", MissileState)
 		A("maxdropoffheight", MaxDropOffHeight)
 		A("maxslopesteepness", MaxSlopeSteepness)
+		A("maxwallglideangle", MaxWallGlideAngle) // [DISDAIN]
 		A("maxstepheight", MaxStepHeight)
 		A("bounceflags", BounceFlags)
 		A("bouncefactor", bouncefactor)
@@ -2596,6 +2597,9 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 	FCheckPosition tm(!!(mo->flags2 & MF2_RIP));
 
 	DAngle oldangle = mo->Angles.Yaw;
+	// [DISDAIN]
+	double lMove = move.Length();
+	DVector2 normMove = move / lMove;
 	do
 	{
 		if (mo->Level->i_compatflags & COMPATF_WALLRUN) pushtime++;
@@ -2633,6 +2637,19 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 			{
 				// Do nothing, relevant actions already done in the condition.
 				// This allows to avoid setting velocities to 0 in the final else of this series.
+			}
+			// [DISDAIN]
+			else if (DVector2 du = 0;
+					(mo->DisdainFlags & DF_GLIDESONWALLS) && mo->BlockingLine != nullptr && abs(normMove | (du = mo->BlockingLine->delta.Unit())) >= mo->MaxWallGlideAngle)
+			{
+				// Glide along the wall instead of stopping.
+				if ((normMove | du) < 0)
+					du = -du;
+
+				normMove = du;
+				move = normMove * lMove;
+				start = mo->Pos().XY() - move * step / steps;
+				mo->Vel.XY() = normMove * mo->Vel.XY().Length();
 			}
 			else if ((mo->flags2 & (MF2_SLIDE|MF2_BLASTED) || bForceSlide) && !(mo->flags&MF_MISSILE))
 			{	// try to slide along it
@@ -2805,6 +2822,7 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 					if (anglediff != nullAngle)
 					{
 						move = move.Rotated(anglediff);
+						normMove = move / lMove; // [DISDAIN]
 						oldangle = mo->Angles.Yaw;
 					}
 					start = mo->Pos().XY() - move * step / steps;

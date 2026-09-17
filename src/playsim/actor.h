@@ -445,6 +445,7 @@ enum ActorFlag9
 enum DisdainActorFlag
 {
 	DF_SWIM				= 0x00000001,	// [DISDAIN] Don't leave liquids when traversing
+	DF_GLIDESONWALLS	= 0x00000002,	// [DISDAIN] If the difference between the move and wall angle is small enough, glide along it instead of stopping.
 };
 
 // --- mobj.renderflags ---
@@ -1370,6 +1371,8 @@ public:
 	double MaxDropOffHeight;
 	double MaxStepHeight;
 	double MaxSlopeSteepness;
+
+	double MaxWallGlideAngle; // [DISDAIN] cos(angle) between wall and movement direction.
 
 	int32_t Mass;
 	int16_t PainChance;
