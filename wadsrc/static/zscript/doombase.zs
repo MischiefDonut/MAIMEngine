@@ -214,7 +214,10 @@ extend class Object
 	native static void MarkSound(Sound snd);
 	native static uint BAM(double angle);
 	native static void SetMusicVolume(float vol);
-	native static String GetVersionString(); // [DISDAIN]
+
+	// [DISDAIN]
+	native static String GetVersionString();
+	native play static void SetTimescale(double f);
 }
 
 class Thinker : Object native play

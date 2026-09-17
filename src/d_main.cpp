@@ -405,23 +405,33 @@ extern bool insave;
 extern TDeletingArray<FLightDefaults *> LightDefaults;
 extern FName MessageBoxClass;
 
-CUSTOM_CVAR(Float, i_timescale, 1.0f, CVAR_NOINITCALL | CVAR_VIRTUAL)
+// [DISDAIN]
+void DoSetTimescale(double f)
 {
-	if (netgame)
-	{
-		Printf("Time scale cannot be changed in net games.\n");
-		self = 1.0f;
-	}
-	else if (self >= 0.05f)
-	{
-		I_FreezeTime(true);
-		TimeScale = self;
-		I_FreezeTime(false);
-	}
-	else
+	if (f < 0.05)
 	{
 		Printf("Time scale must be at least 0.05!\n");
+		return;
 	}
+
+	I_FreezeTime(true);
+	TimeScale = f;
+	I_FreezeTime(false);
+}
+
+// [DISDAIN]
+CUSTOM_CVAR(Float, i_timescale, 1.0f, CVAR_SERVERINFO | CVAR_NOSAVE | CVAR_NOINITCALL | CVAR_VIRTUAL)
+{
+	DoSetTimescale((double)self);
+}
+
+// [DISDAIN]
+DEFINE_ACTION_FUNCTION(DObject, SetTimescale)
+{
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(f);
+	DoSetTimescale((double)f);
+	return 0;
 }
 
 // PUBLIC DATA DEFINITIONS -------------------------------------------------

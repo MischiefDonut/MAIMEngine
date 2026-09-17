@@ -125,5 +125,7 @@ inline bool WantsFlechetteItem = false;
 extern const AActor *SendItemUse, *SendItemDrop;
 extern int SendItemDropAmount;
 
+// [DISDAIN]
+void DoSetTimescale(double f);
 
 #endif
