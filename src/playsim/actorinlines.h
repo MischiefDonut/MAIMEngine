@@ -289,8 +289,30 @@ inline double GetWallBounceFactor(AActor* actor)
 }
 
 // Yet another hack for MBF...
-inline bool CanJump(AActor* actor)
+inline bool CanJump(const AActor* actor) // [DISDAIN]
 {
 	return (actor->flags6 & MF6_CANJUMP) || (
-		(actor->BounceFlags & BOUNCE_MBF) && actor->IsSentient() && (actor->flags & MF_FLOAT));
+		(actor->BounceFlags & BOUNCE_MBF) && (actor->flags & MF_FLOAT) && actor->IsSentient()); // [DISDAIN]
+}
+
+// [DISDAIN]
+inline void ClampWaterHeight(AActor* actor, double z, const FWaterResults &res)
+{
+	if (z + actor->Height >= actor->watertop)
+		actor->SetZ((res.level == 1 ? res.top : actor->watertop) - actor->Height);
+	else
+		actor->SetZ(actor->waterbottom - actor->Height * 0.5);
+}
+
+// [DISDAIN]
+inline bool ShouldFloat(AActor* actor)
+{
+	return !(actor->flags2 & MF2_DORMANT) && actor->target && (!(actor->DisdainFlags & DF_SWIM) || actor->waterlevel > 2)
+			&& !(actor->flags & (MF_SKULLFLY | MF_INFLOAT));
+}
+
+// [DISDAIN]
+inline bool CanSwim(const AActor* actor)
+{
+	return (actor->flags3 & MF3_ISMONSTER) && !(actor->flags6 & MF6_KILLED);
 }

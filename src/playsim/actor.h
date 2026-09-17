@@ -441,6 +441,12 @@ enum ActorFlag9
 	MF9_NOAUTOOFFSKULLFLY		= 0x00000100,	// Don't automatically disable MF_SKULLFLY if velocity is 0.
 };
 
+// [DISDAIN] Bespoke(tm) Features
+enum DisdainActorFlag
+{
+	DF_SWIM				= 0x00000001,	// [DISDAIN] Don't leave liquids when traversing
+};
+
 // --- mobj.renderflags ---
 enum ActorRenderFlag
 {
@@ -611,6 +617,7 @@ typedef TFlags<ActorFlag6> ActorFlags6;
 typedef TFlags<ActorFlag7> ActorFlags7;
 typedef TFlags<ActorFlag8> ActorFlags8;
 typedef TFlags<ActorFlag9> ActorFlags9;
+typedef TFlags<DisdainActorFlag> DisdainActorFlags; // [DISDAIN]
 typedef TFlags<ActorRenderFlag> ActorRenderFlags;
 typedef TFlags<ActorRenderFlag2> ActorRenderFlags2;
 typedef TFlags<ActorBounceFlag> ActorBounceFlags;
@@ -624,6 +631,7 @@ DEFINE_TFLAGS_OPERATORS (ActorFlags6)
 DEFINE_TFLAGS_OPERATORS (ActorFlags7)
 DEFINE_TFLAGS_OPERATORS (ActorFlags8)
 DEFINE_TFLAGS_OPERATORS (ActorFlags9)
+DEFINE_TFLAGS_OPERATORS (DisdainActorFlags) // [DISDAIN]
 DEFINE_TFLAGS_OPERATORS (ActorRenderFlags)
 DEFINE_TFLAGS_OPERATORS (ActorRenderFlags2)
 DEFINE_TFLAGS_OPERATORS (ActorBounceFlags)
@@ -1177,6 +1185,7 @@ public:
 	ActorFlags7		flags7;			// WHO WANTS TO BET ON 8!?
 	ActorFlags8		flags8;			// I see your 8, and raise you a bet for 9.
 	ActorFlags9		flags9;			// Happy ninth actor flag field GZDoom !
+	DisdainActorFlags DisdainFlags;	// [DISDAIN]
 	double			Floorclip;		// value to use for floor clipping
 	double			radius, Height;		// for movement checking
 
@@ -1278,6 +1287,7 @@ public:
 	TObjPtr<AActor*> goal;			// Monster's goal if not chasing anything
 	int				waterlevel;		// 0=none, 1=feet, 2=waist, 3=eyes
 	double			waterdepth;		// Stores how deep into water you are, in map units
+	double			watertop, waterbottom; // [DISDAIN] Stores the Z positions of the water surfaces
 	uint8_t			boomwaterlevel;	// splash information for non-swimmable water sectors
 	uint8_t			MinMissileChance;// [RH] If a random # is > than this, then missile attack.
 	int8_t			LastLookPlayerNumber;// Player number last looked for (if TIDtoHate == 0)

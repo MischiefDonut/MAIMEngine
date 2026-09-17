@@ -2208,17 +2208,14 @@ void P_FakeZMovement(AActor *mo)
 	// adjust height
 	//
 	mo->AddZ(mo->Vel.Z);
-	if ((mo->flags&MF_FLOAT) && mo->target)
+	if ((mo->flags&MF_FLOAT) && ShouldFloat(mo)) // [DISDAIN]
 	{ // float down towards target if too close
-		if (!(mo->flags & MF_SKULLFLY) && !(mo->flags & MF_INFLOAT))
-		{
-			double dist = mo->Distance2D(mo->target);
-			double delta = mo->target->Center() - mo->Z();
-			if (delta < 0 && dist < -(delta * 3))
-				mo->AddZ(-mo->FloatSpeed);
-			else if (delta > 0 && dist < (delta * 3))
-				mo->AddZ(mo->FloatSpeed);
-		}
+		double dist = mo->Distance2D(mo->target);
+		double delta = mo->target->Center() - mo->Z();
+		if (delta < 0 && dist < -(delta * 3))
+			mo->AddZ(-mo->FloatSpeed);
+		else if (delta > 0 && dist < (delta * 3))
+			mo->AddZ(mo->FloatSpeed);
 	}
 	if (mo->player && mo->flags&MF_NOGRAVITY && (mo->Z() > mo->floorz) && !mo->IsNoClip2())
 	{
@@ -2236,6 +2233,15 @@ void P_FakeZMovement(AActor *mo)
 	if (mo->Top() > mo->ceilingz)
 	{ // hit the ceiling
 		mo->SetZ(mo->ceilingz - mo->Height);
+	}
+
+	// [DISDAIN]
+	if ((mo->DisdainFlags & DF_SWIM) && mo->waterlevel > 2 && fabs(mo->Vel.Z) <= mo->FloatSpeed && CanSwim(mo))
+	{
+		FWaterResults res;
+		P_UpdateWaterDepth(mo->Pos(), mo->Height, mo->Sector, mo->Height, false, res);
+		if (res.level <= 2)
+			ClampWaterHeight(mo, mo->Z(), res);
 	}
 }
 
@@ -2527,6 +2533,23 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 				thing->Vel.X = thing->Vel.Y = 0;
 				thing->SetZ(oldz);
 				thing->flags6 &= ~MF6_INTRYMOVE;
+				return false;
+			}
+		}
+
+		// [DISDAIN] Make sure the spot is a valid liquid
+		if ((thing->DisdainFlags & DF_SWIM) && CanSwim(thing)
+			&& ((thing->waterlevel > 2 && thing->Vel.XY().LengthSquared() <= thing->Speed * thing->Speed) || (thing->waterlevel <= 2 && tm.FromPMove)))
+		{
+			FWaterResults res;
+			P_UpdateWaterDepth(DVector3(tm.pos.XY(), thing->Z()), thing->Height, tm.sector, thing->Height, false, res);
+			if (res.level <= 2)
+			{
+				thing->SetZ(oldz);
+				thing->flags6 &= ~MF6_INTRYMOVE;
+				if (thing->waterlevel > 2)
+					thing->Vel.XY().Zero();
+
 				return false;
 			}
 		}
@@ -2933,6 +2956,16 @@ bool P_CheckMove(AActor *thing, const DVector2 &pos, FCheckPosition& tm, int fla
 			|| tm.floorz - newz != 0))
 		{ // must stay within a sector of a certain floor type
 			return false;
+		}
+
+		// [DISDAIN] FIXME: Should monsters simply be allowed to get shoved out of water?
+		if ((thing->DisdainFlags & DF_SWIM) && thing->waterlevel > 2 && CanSwim(thing)
+			&& thing->Vel.XY().LengthSquared() <= thing->Speed * thing->Speed)
+		{
+			FWaterResults res;
+			P_UpdateWaterDepth(DVector3(tm.pos.XY(), newz), thing->Height, tm.sector, thing->Height, false, res);
+			if (res.level <= 2)
+				return false;
 		}
 	}
 

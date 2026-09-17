@@ -332,6 +332,9 @@ static FFlagDef ActorFlagDefs[]=
 	DEFINE_FLAG(MF8, ADDLIGHTLEVEL, AActor, flags8),
 	DEFINE_FLAG(MF8, ONLYSLAMSOLID, AActor, flags8),
 
+	// [DISDAIN]
+	DEFINE_FLAG(DF, SWIM, AActor, DisdainFlags),
+
 	DEFINE_FLAG(MF9, SHADOWAIM, AActor, flags9),
 	DEFINE_FLAG(MF9, DOSHADOWBLOCK, AActor, flags9),
 	DEFINE_FLAG(MF9, SHADOWBLOCK, AActor, flags9),

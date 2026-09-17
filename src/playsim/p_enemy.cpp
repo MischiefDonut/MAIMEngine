@@ -647,22 +647,39 @@ static int P_Move (AActor *actor)
 
 	if (!try_ok)
 	{
-		if ((CanJump(actor) || (actor->flags & MF_FLOAT)) && tm.floatok)
+		// [DISDAIN]
+		if (tm.floatok && (CanJump(actor) || ((actor->flags & MF_FLOAT) && (!(actor->DisdainFlags & DF_SWIM) || actor->waterlevel > 2))))
 		{ // must adjust height
-			double savedz = actor->Z();
-
-			if (actor->Z() < tm.floorz)
-				actor->AddZ(actor->FloatSpeed);
-			else
-				actor->AddZ(-actor->FloatSpeed);
-
-			// [RH] Check to make sure there's nothing in the way of the float
-			if (P_TestMobjZ(actor))
+			// This can happen when swimming since the check still fails
+			if (!(actor->flags & MF_INFLOAT))
 			{
-				actor->flags |= MF_INFLOAT;
-				return true;
+				double savedz = actor->Z();
+
+				if (actor->Z() < tm.floorz)
+					actor->AddZ(actor->FloatSpeed);
+				else
+					actor->AddZ(-actor->FloatSpeed);
+
+				if (actor->DisdainFlags & DF_SWIM)
+				{
+					FWaterResults res;
+					P_UpdateWaterDepth(actor->Pos(), actor->Height, actor->Sector, actor->Height, false, res);
+					if (res.level <= 2)
+						ClampWaterHeight(actor, actor->Z(), res);
+				}
+
+				// [RH] Check to make sure there's nothing in the way of the float
+				if (P_TestMobjZ(actor))
+				{
+					actor->flags |= MF_INFLOAT;
+					return !(actor->DisdainFlags & DF_SWIM); // Swimming things should still try and move around
+				}
+				actor->SetZ(savedz);
 			}
-			actor->SetZ(savedz);
+			else
+			{
+				return false;
+			}
 		}
 
 		if (!spechit.Size ())

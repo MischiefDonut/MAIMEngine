@@ -1071,6 +1071,7 @@ DEFINE_PROPERTY(clearflags, 0, Actor)
 	defaults->flags7 = 0;
 	defaults->flags8 = 0;
 	defaults->flags9 = 0;
+	defaults->DisdainFlags = 0; // [DISDAIN]
 }
 
 //==========================================================================
