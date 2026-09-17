@@ -1363,6 +1363,9 @@ public:
 	int32_t Mass;
 	int16_t PainChance;
 	int PainThreshold;
+	int MaxPain;			// [DISDAIN]
+	int PainAmount;			// [DISDAIN]
+	int PainAccumulation;	// [DISDAIN]
 	FName DamageType;
 	FName DamageTypeReceived;
 	double DamageFactor;

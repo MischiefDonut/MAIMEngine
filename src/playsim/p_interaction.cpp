@@ -836,6 +836,7 @@ void P_AutoUseStrifeHealth (player_t *player)
 //
 //==========================================================================
 static bool TriggerPainChance(AActor *target, FName mod, bool forcedPain, bool zscript);
+static int AccumulatePain(AActor* target, int accum, FName mod, bool forcedPain); // [DISDAIN]
 
 static inline bool MustForcePain(AActor *target, AActor *inflictor)
 {
@@ -898,7 +899,12 @@ static int ReactToDamage(AActor *target, AActor *inflictor, AActor *source, int 
 			modName = inflictor->PainType;
 
 		// Not called from ZScript.
-		justhit = TriggerPainChance(target, modName, forcedPain, false);
+		// [DISDAIN] pain accumulation system
+		int force = inflictor ? AccumulatePain(target, inflictor->PainAmount, modName, forcedPain) : -1;
+		if (force == -1)
+			justhit = TriggerPainChance(target, modName, forcedPain, false);
+		else if (force == 1)
+			justhit = TriggerPainChance(target, modName, true, false);
 	}
 
 	if (wakeup && target->player == nullptr) target->reactiontime = 0;			// we're awake now...
@@ -967,6 +973,52 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, ReactToDamage, ReactToDamage)
 	PARAM_INT(originaldamage);
 
 	ACTION_RETURN_BOOL(ReactToDamage(self, inflictor, source, damage, mod.GetIndex(), flags, originaldamage));
+}
+
+// [DISDAIN]
+static int AccumulatePain(AActor* target, int accum, FName mod = NAME_None, bool forcedPain = false)
+{
+	if (target == nullptr || (target->flags5 & MF5_NOPAIN) || (target->flags6 & MF6_KILLED))
+		return 0;
+
+	bool isGeneric = true;
+	int threshold = target->MaxPain;
+	for (auto& mp : target->GetInfo()->MaxPainThresholds)
+	{
+		if (mp.first == mod)
+		{
+			isGeneric = false;
+			threshold = mp.second;
+			break;
+		}
+	}
+
+	if (isGeneric && threshold <= 0)
+		return -1;
+
+	if (forcedPain)
+	{
+		target->PainAccumulation = 0;
+		return 1;
+	}
+
+	target->PainAccumulation += accum;
+	if (target->PainAccumulation >= threshold)
+	{
+		target->PainAccumulation = 0;
+		return 1;
+	}
+
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, AccumulatePain)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT(accum);
+	PARAM_NAME(mod);
+	PARAM_BOOL(forcedPain);
+	ACTION_RETURN_INT(AccumulatePain(self, accum, mod, forcedPain));
 }
 
 static bool TriggerPainChance(AActor *target, FName mod = NAME_None, bool forcedPain = false, bool zscript = false)

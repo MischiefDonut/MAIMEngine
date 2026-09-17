@@ -2097,6 +2097,8 @@ DEFINE_FIELD(AActor, MaxDropOffHeight)
 DEFINE_FIELD(AActor, MaxStepHeight)
 DEFINE_FIELD(AActor, MaxSlopeSteepness)
 DEFINE_FIELD(AActor, PainChance)
+DEFINE_FIELD(AActor, MaxPain)		// [DISDAIN]
+DEFINE_FIELD(AActor, PainAmount)	// [DISDAIN]
 DEFINE_FIELD(AActor, PainType)
 DEFINE_FIELD(AActor, DeathType)
 DEFINE_FIELD(AActor, DamageFactor)

@@ -333,6 +333,8 @@ class Actor : Thinker native
 	native double MaxStepHeight;
 	native double MaxSlopeSteepness;
 	native int16 PainChance;
+	native int MaxPain;		// [DISDAIN]
+	native int PainAmount;	// [DISDAIN]
 	native name PainType;
 	native name DeathType;
 	native double DamageFactor;
@@ -412,6 +414,7 @@ class Actor : Thinker native
 	property WoundHealth: WoundHealth;
 	property ReactionTime: reactiontime;
 	property PainThreshold: PainThreshold;
+	property PainAmount : PainAmount; // [DISDAIN]
 	property DamageMultiply: DamageMultiply;
 	property ProjectileKickback: ProjectileKickback;
 	property Speed: speed;
@@ -908,6 +911,7 @@ class Actor : Thinker native
 
 	native void SetIdle(bool nofunction = false);
 	native bool CheckMeleeRange(double range = -1);
+	native int AccumulatePain(int amt, Name mod, bool forcedPain = false); // [DISDAIN]
 	native bool TriggerPainChance(Name mod, bool forcedPain = false);
 	native virtual int DamageMobj(Actor inflictor, Actor source, int damage, Name mod, int flags = 0, double angle = 0);
 	native virtual bool ReactToDamage(Actor inflictor, Actor source, int damage, Name mod, int flags, int originaldamage);

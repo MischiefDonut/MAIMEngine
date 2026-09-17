@@ -307,6 +307,9 @@ void AActor::Serialize(FSerializer &arc)
 		A("floatspeed", FloatSpeed)
 		A("mass", Mass)
 		A("painchance", PainChance)
+		A("maxpain", MaxPain)					// [DISDAIN]
+		A("painamount", PainAmount)				// [DISDAIN]
+		A("painaccumulation", PainAccumulation)	// [DISDAIN]
 		A("spawnstate", SpawnState)
 		A("seestate", SeeState)
 		A("meleestate", MeleeState)
