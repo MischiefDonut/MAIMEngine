@@ -183,6 +183,7 @@ static const char *LightTags[]=
    "dontlightothers",
    "dontlightmap",
    "intensity",
+   "trace",
    nullptr
 };
 
@@ -210,6 +211,7 @@ enum {
    LIGHTTAG_DONTLIGHTOTHERS,
    LIGHTTAG_DONTLIGHTMAP,
    LIGHTTAG_INTENSITY,
+   LIGHTTAG_TRACE,
 };
 
 //==========================================================================
@@ -516,6 +518,9 @@ class GLDefsParser
 				case LIGHTTAG_DONTLIGHTMAP:
 					defaults->SetDontLightMap(ParseInt(sc) != 0);
 					break;
+				case LIGHTTAG_TRACE:
+					defaults->SetTrace(ParseInt(sc) != 0);
+					break;
 				case LIGHTTAG_SPOT:
 					{
 						float innerAngle = ParseFloat(sc);
@@ -620,6 +625,9 @@ class GLDefsParser
 					break;
 				case LIGHTTAG_DONTLIGHTMAP:
 					defaults->SetDontLightMap(ParseInt(sc) != 0);
+					break;
+				case LIGHTTAG_TRACE:
+					defaults->SetTrace(ParseInt(sc) != 0);
 					break;
 				case LIGHTTAG_SPOT:
 					{
@@ -729,6 +737,9 @@ class GLDefsParser
 				case LIGHTTAG_DONTLIGHTMAP:
 					defaults->SetDontLightMap(ParseInt(sc) != 0);
 					break;
+				case LIGHTTAG_TRACE:
+					defaults->SetTrace(ParseInt(sc) != 0);
+					break;
 				case LIGHTTAG_SPOT:
 					{
 						float innerAngle = ParseFloat(sc);
@@ -836,6 +847,9 @@ class GLDefsParser
 				case LIGHTTAG_DONTLIGHTMAP:
 					defaults->SetDontLightMap(ParseInt(sc) != 0);
 					break;
+				case LIGHTTAG_TRACE:
+					defaults->SetTrace(ParseInt(sc) != 0);
+					break;
 				case LIGHTTAG_SPOT:
 					{
 						float innerAngle = ParseFloat(sc);
@@ -939,6 +953,9 @@ class GLDefsParser
 					break;
 				case LIGHTTAG_DONTLIGHTMAP:
 					defaults->SetDontLightMap(ParseInt(sc) != 0);
+					break;
+				case LIGHTTAG_TRACE:
+					defaults->SetTrace(ParseInt(sc) != 0);
 					break;
 				case LIGHTTAG_SPOT:
 					{
