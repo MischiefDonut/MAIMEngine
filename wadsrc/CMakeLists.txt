@@ -6,7 +6,7 @@ generate_language_files(engine_pk3 static/language.csv ENGINE)
 add_custom_target(
 	copy_metadata
 	COMMAND ${CMAKE_COMMAND} -E copy
-		"${CMAKE_CURRENT_SOURCE_DIR}/../src/posix/freedesktop/com.mischiefdonut.disdain.metainfo.xml"
+		"${CMAKE_CURRENT_SOURCE_DIR}/../src/posix/freedesktop/com.mischiefdonut.maim.metainfo.xml"
 		"${CMAKE_CURRENT_SOURCE_DIR}/static/meta.xml"
 	COMMAND ${CMAKE_COMMAND} -E copy
 		"${CMAKE_CURRENT_SOURCE_DIR}/../CONTRIBUTORS"

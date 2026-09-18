@@ -814,7 +814,7 @@ int FIWadManager::IdentifyVersion (std::vector<FileSys::ResourceName>&wadfiles, 
 #endif
 		// [DISDAIN]
 		I_FatalError(
-			"Cannot find DISDAIN.ipk3!\n"
+			"Cannot find MAIM.ipk3!\n"
 			"Did you install " GAMENAME " properly?\n"
 			"\n"
 			"You can do any of the following:\n"

@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <component type="desktop-application">
-	<id>com.mischiefdonut.disdain</id>
-	<name>DISDAIN</name>
+	<id>com.mischiefdonut.maim</id>
+	<name>MAIM</name>
 
 	<metadata_license>CC0-1.0</metadata_license>
 	<project_license>GPL-3.0</project_license>
 
-	<developer id="com.mischiefdonut.disdain">
+	<developer id="com.mischiefdonut.maim">
 		<name>Mischief Donut</name>
 		<url>https://github.com/orgs/MischiefDonut</url>
 	</developer>
-	<summary>DISDAIN is a first person dark fantasy action game from Mischief Donut</summary>
+	<summary>MAIM is a retro-styled first person shooter from Mischief Donut</summary>
 
 	<url type="bugtracker">https://github.com/orgs/MischiefDonut</url>
 	<url type="contact">https://dsc.gg/mischiefdonut</url>
 	<url type="homepage">https://github.com/orgs/MischiefDonut</url>
-	<url type="vcs-browser">https://github.com/MischiefDonut/DISDAINEngine</url>
+	<url type="vcs-browser">https://github.com/MischiefDonut/MAIMEngine</url>
 
 	<description>
 		<p>(To be written)</p>
@@ -28,14 +28,14 @@
 
 	<screenshots>
 		<screenshot type="default">
-			<image>https://cdn.jsdelivr.net/gh/MischiefDonut/DISDAINEngine@trunk/src/posix/freedesktop/screenshot_disdain.png</image>
+			<image>https://cdn.jsdelivr.net/gh/MischiefDonut/MAIMEngine@trunk/src/posix/freedesktop/screenshot_maim.png</image>
 			<caption>Doom screenshot</caption>
 		</screenshot>
 	</screenshots>
 
-	<launchable type="desktop-id">com.mischiefdonut.disdain.desktop</launchable>
+	<launchable type="desktop-id">com.mischiefdonut.maim.desktop</launchable>
 	<provides>
-		<binary>DISDAIN</binary>
+		<binary>MAIM</binary>
 	</provides>
 
 	<keywords>
@@ -43,7 +43,7 @@
 		<keyword>fps</keyword>
 		<keyword>shooter</keyword>
 		<keyword>sourceport</keyword>
-		<keyword>disdain</keyword>
+		<keyword>maim</keyword>
 	</keywords>
 
 	<categories>

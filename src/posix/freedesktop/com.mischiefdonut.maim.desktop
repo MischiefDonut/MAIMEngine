@@ -1,0 +1,24 @@
+[Desktop Entry]
+Name=MAIM
+Comment=MAIM is a retro-styled first person shooter from Mischief Donut
+Icon=com.mischiefdonut.maim
+Categories=Game;Shooter;
+Exec=MAIM %F
+StartupNotify=true
+PrefersNonDefaultGPU=true
+Terminal=false
+Type=Application
+Keywords=maim;first;person;shooter;
+MimeType=application/x-doom-wad;application/x-doom-pk7;application/x-doom-pk3;
+Actions=launch-safemode;launch-maim;
+StartupWMClass=com.mischiefdonut.maim
+
+[Desktop Action launch-safemode]
+Name=Play MAIM (Safe Mode)
+Icon=com.mischiefdonut.maim
+Exec=MAIM -noautoload -noautoexec %F
+
+[Desktop Action launch-maim]
+Name=Play MAIM
+Icon=com.mischiefdonut.maim
+Exec=MAIM %F

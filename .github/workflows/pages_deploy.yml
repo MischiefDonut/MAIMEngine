@@ -56,7 +56,7 @@ jobs:
           ref: ${{ matrix.ref_info.ref }}
       - name: Document ref
         run: |
-          zscdoc -f ./wadsrc/static -o ./output --delete-without-confirm --base-url "/DISDAINEngine/docs/<version>" --target-version '${{ matrix.ref_info.url_part }}' --versions '${{ needs.build_matrix.outputs.json_refs }}' --canonical-domain "https://${{ github.repository_owner }}.github.io"
+          zscdoc -f ./wadsrc/static -o ./output --delete-without-confirm --base-url "/MAIMEngine/docs/<version>" --target-version '${{ matrix.ref_info.url_part }}' --versions '${{ needs.build_matrix.outputs.json_refs }}' --canonical-domain "https://${{ github.repository_owner }}.github.io"
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.ref_info.url_part }}

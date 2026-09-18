@@ -72,7 +72,7 @@
 #define SAVEVER 4560
 
 // This is so that derivates can use the same savegame versions without worrying about engine compatibility
-#define GAMESIG "DISDAIN"
+#define GAMESIG "MAIM"
 
 // list of compatible ports, ex.:
 // #define ALLOWLOADIN "PORT1", "PORT2", "PORT3"
@@ -89,12 +89,12 @@
 #define VR3D_ENABLED
 
 // More stuff that needs to be different for derivatives.
-#define GAMENAME "DISDAIN"
-#define WGAMENAME L"DISDAIN"
-#define GAMENAMELOWERCASE "disdain"
-#define APPID "com.mischiefdonut.disdain"
+#define GAMENAME "MAIM"
+#define WGAMENAME L"MAIM"
+#define GAMENAMELOWERCASE "maim"
+#define APPID "com.mischiefdonut.maim"
 #define QUERYIWADDEFAULT false
-#define BUGS_URL "https://www.mischiefdonut.com/forum/disdain/bugs"
+#define BUGS_URL "https://www.mischiefdonut.com/forum/maim/bugs"
 
 #define UPDATER_URL "https://zdoom.org/uzdoom-updates.php?r={}&f={}"
 #define UPDATER_URL_BACKUP "https://github.com/UZDoom/UZDoom/releases/{}/{}/{}"
