@@ -122,4 +122,4 @@ const char *GetGitTag();
 int GetGitDistance();
 
 // [DISDAIN]
-#define DISDAINVERSION "1"
+#define DISDAINVERSION "2"
