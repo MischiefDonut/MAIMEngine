@@ -3369,6 +3369,13 @@ void MapLoader::LoadLightmap(MapData *map)
 	if (numSurfaces == 0 || numTexCoords == 0 || numTexBytes == 0)
 		return;
 
+	float sunDir[3], sunColor[3];
+	fr.Read(sunDir, sizeof(float) * 3);
+	fr.Read(sunColor, sizeof(float) * 3);
+	Level->SunDirection = FVector3(sunDir);
+	Level->SunColor = FVector3(sunColor);
+	Level->SunIntensity = fr.ReadFloat();
+
 	/*if (numSubsectors != Level->subsectors.Size())
 	{
 		Printf(PRINT_HIGH, "LoadLightmap: subsector count for level doesn't match (%d in wad vs %d in engine)\n", (int)numSubsectors, (int)Level->subsectors.Size());

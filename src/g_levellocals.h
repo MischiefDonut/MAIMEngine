@@ -515,6 +515,9 @@ public:
 	int LMTextureCount = 0;
 	int LMTextureSize = 0;
 	TArray<uint16_t> LMTextureData;
+	FVector3 SunDirection;
+	FVector3 SunColor;
+	float SunIntensity;
 	TArray<LightProbe> LightProbes;
 	int LPMinX = 0;
 	int LPMinY = 0;
