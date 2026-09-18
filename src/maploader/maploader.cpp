@@ -3350,7 +3350,7 @@ void MapLoader::LoadLightmap(MapData *map)
 
 
 	int version = fr.ReadInt32();
-	if (version != 0)
+	if (version != LIGHTMAP_VERSION)
 	{
 		Printf(PRINT_HIGH, "LoadLightmap: unsupported lightmap lump version\n");
 		return;
