@@ -154,6 +154,11 @@ unsigned int FHardwareTexture::CreateTexture(unsigned char * buffer, int w, int 
 		glGenerateMipmap(GL_TEXTURE_2D);
 		mipmapped = true;
 	}
+	else if (!mipmap)
+	{
+		// We don't want mipmaps, so disable mipmaps
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	}
 
 	if (texunit > 0) glActiveTexture(GL_TEXTURE0);
 	else if (texunit == -1) glBindTexture(GL_TEXTURE_2D, textureBinding);

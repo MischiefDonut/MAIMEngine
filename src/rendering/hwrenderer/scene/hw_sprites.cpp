@@ -23,7 +23,6 @@
 #include "r_sky.h"
 #include "r_utility.h"
 #include "a_pickups.h"
-#include "a_corona.h"
 #include "d_player.h"
 #include "g_levellocals.h"
 #include "events.h"
@@ -56,6 +55,7 @@
 extern TArray<spritedef_t> sprites;
 extern TArray<spriteframe_t> SpriteFrames;
 extern uint32_t r_renderercaps;
+extern TArray<AActor*> Coronas;
 
 const float LARGE_VALUE = 1e19f;
 const float MY_SQRT2    = 1.41421356237309504880; // sqrt(2)
@@ -164,13 +164,35 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 	}
 	if (RenderStyle.BlendOp != STYLEOP_Shadow)
 	{
-		if (di->Level->HasDynamicLights && !di->isFullbrightScene() && !fullbright)
+		if (!di->isFullbrightScene() && !fullbright)
 		{
-			if (dynlightindex == -1)	// only set if we got no light buffer index. This covers all cases where sprite lighting is used.
+			if (di->Level->HasDynamicLights)
 			{
-				float out[3] = {};
-				di->GetDynSpriteLight(gl_light_sprites ? actor : nullptr, gl_light_particles ? particle : nullptr, out);
-				state.SetDynLight(out[0], out[1], out[2]);
+				if (dynlightindex == -1)	// only set if we got no light buffer index. This covers all cases where sprite lighting is used.
+				{
+					float out[3] = {};
+					di->GetDynSpriteLight(gl_light_sprites ? actor : nullptr, gl_light_particles ? particle : nullptr, out);
+					state.SetDynLight(out[0], out[1], out[2]);
+				}
+			}
+
+			if (di->Level->LightProbes.Size() > 0)
+			{
+				FVector3 probeColor;
+				if (gl_light_particles && particle)
+				{
+					if (TryGetLightProbeColor(di->Level, x, y, z, probeColor))
+					{
+						state.SetLightProbe(probeColor.X, probeColor.Y, probeColor.Z);
+					}
+				}
+				else if (gl_light_sprites && actor)
+				{
+					if (TryGetLightProbeColor(di->Level, actor, probeColor))
+					{
+						state.SetLightProbe(probeColor.X, probeColor.Y, probeColor.Z);
+					}
+				}
 			}
 		}
 		sector_t *cursec = actor ? actor->Sector : particle ? particle->subsector->sector : nullptr;
@@ -298,13 +320,6 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 		}
 		else
 		{
-			if (actor && di->Level->LightProbes.Size() > 0)
-			{
-				LightProbe* probe = FindLightProbe(di->Level, actor->X(), actor->Y(), actor->Center());
-				if (probe)
-					state.SetDynLight(probe->Red, probe->Green, probe->Blue);
-			}
-
 			if(actor && (actor->flags9 & MF9_DECOUPLEDANIMATIONS))
 			{
 				IFVIRTUALPTR(actor, AActor, AnimateBones)
@@ -316,6 +331,7 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 			FHWModelRenderer renderer(di, state, dynlightindex);
 			RenderModel(&renderer, x, y, z, modelframe, actor, Net_ModifyObjectFrac(actor, di->Viewpoint.TicFrac));
 			state.SetVertexBuffer(screen->mVertexData);
+			state.SetLightIndex(-1);
 		}
 	}
 
@@ -343,6 +359,7 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 	state.SetAddColor(0);
 	state.EnableTexture(true);
 	state.SetDynLight(0, 0, 0);
+	state.SetLightProbe(0, 0, 0);
 }
 
 //==========================================================================
@@ -811,13 +828,11 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 		return;
 	}
 
-#if 0
 	if (thing->IsKindOf(NAME_Corona))
 	{
-		di->Coronas.Push(static_cast<ACorona*>(thing));
+		Coronas.SortedInsertUnique(thing);
 		return;
 	}
-#endif
 
 	const auto &vp = di->Viewpoint;
 	AActor *camera = vp.camera;

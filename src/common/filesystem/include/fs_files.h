@@ -350,6 +350,12 @@ public:
 		return v;
 	}
 
+	float ReadFloat()
+	{
+		float v = 0.0f;
+		Read(&v, 4);
+		return v;
+	}
 
 	friend class FileSystem;
 };

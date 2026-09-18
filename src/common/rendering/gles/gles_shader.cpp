@@ -251,6 +251,14 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 
 	FString i_data = GetGLSLPrecision();
 
+	// Add lightmap texture array if enabled
+	if (gles.lightmapsAvailable)
+	{
+		i_data += 
+			"precision lowp sampler2DArray;\n" \
+			"uniform sampler2DArray LightMap;\n";
+	}
+
 	i_data += R"(
 
 		// light buffers
@@ -284,6 +292,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 		uniform vec4 uObjectColor;
 		uniform vec4 uObjectColor2;
 		uniform vec4 uDynLightColor;
+		uniform vec4 uLightProbeColor;
 		uniform vec4 uAddColor;
 		uniform vec4 uTextureBlendColor;
 		uniform vec4 uTextureModulateColor;
@@ -390,6 +399,10 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 	assert(screen->mBones != NULL);
 
 	unsigned int lightbuffersize = screen->mLights->GetBlockSize();
+
+	vp_comb.Format("#version %s\n#define NUM_UBO_LIGHTS %d\n#define NO_CLIPDISTANCE_SUPPORT\n", 
+		gles.lightmapsAvailable ? "300 es" : "100", 
+		lightbuffersize);
 
 	vp_comb.Format("#version %s\n\n#define NO_CLIPDISTANCE_SUPPORT\n", gles.shaderVersionString);
 
@@ -525,6 +538,8 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 		glBindAttribLocation(shaderData->hShader, VATTR_BONEWEIGHT, "aBoneWeight");
 		glBindAttribLocation(shaderData->hShader, VATTR_BONESELECTOR, "aBoneSelector");
 
+		if (gles.lightmapsAvailable)
+			glBindAttribLocation(shaderData->hShader, VATTR_LIGHTMAP, "aLightmap");
 
 		glLinkProgram(shaderData->hShader);
 
@@ -587,6 +602,7 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 	shaderData->muBoneIndexBase.Init(shaderData->hShader, "uBoneIndexBase");
 	shaderData->muFogColor.Init(shaderData->hShader, "uFogColor");
 	shaderData->muDynLightColor.Init(shaderData->hShader, "uDynLightColor");
+	shaderData->muLightProbeColor.Init(shaderData->hShader, "uLightProbeColor");
 	shaderData->muObjectColor.Init(shaderData->hShader, "uObjectColor");
 	shaderData->muObjectColor2.Init(shaderData->hShader, "uObjectColor2");
 	shaderData->muGlowBottomColor.Init(shaderData->hShader, "uGlowBottomColor");
@@ -632,6 +648,12 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 
 	int shadowmapindex = glGetUniformLocation(shaderData->hShader, "ShadowMap");
 	if (shadowmapindex >= 0) glUniform1i(shadowmapindex, 16);
+
+	if (gles.lightmapsAvailable)
+	{
+		int lightmapindex = glGetUniformLocation(shaderData->hShader, "LightMap");
+		if (lightmapindex >= 0) glUniform1i(lightmapindex, 17);
+	}
 
 	glUseProgram(0);
 

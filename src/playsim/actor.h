@@ -513,6 +513,7 @@ enum ActorRenderFlag2
 	RF2_INTERPOLATESCALE		= 0x1000,
 	RF2_INTERPOLATEALPHA		= 0x2000,
 	RF2_NODYNAMICLIGHTING		= 0x4000,	// [MC] Disable dynamic lighting effects on sprites/models
+	RF2_TRACELIT				= 0x8000,	// [DISDAIN] actor is lit using tracelighting instead of probes
 };
 
 // This translucency value produces the closest match to Heretic's TINTTAB.
@@ -1724,6 +1725,20 @@ public:
 	double DistanceBySpeed(AActor *dest, double speed) const
 	{
 		return max(1., Distance2D(dest) / speed);
+	}
+
+	DVector3 GetLightProbeSamplePosition(double wallOffsetDist)
+	{
+		double zPos = __Pos.Z + Height / 2;
+
+		if (renderflags & RF_WALLSPRITE)
+		{
+			return DVector3(__Pos.X + Angles.Yaw.Cos() * wallOffsetDist, __Pos.Y + Angles.Yaw.Sin() * wallOffsetDist, zPos);
+		}
+		else
+		{
+			return DVector3(__Pos.X, __Pos.Y, zPos);
+		}
 	}
 
 	int GetLightLevel(sector_t* rendersector);
