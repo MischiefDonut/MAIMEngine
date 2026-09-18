@@ -599,6 +599,7 @@ struct LevelLocals native
 	// [DISDAIN]
 	native bool nousersave;
 	native bool noautomap;
+	native readonly bool NoMapTitle;
 
 	native String GetUDMFString(int type, int index, Name key);
 	native int GetUDMFInt(int type, int index, Name key);

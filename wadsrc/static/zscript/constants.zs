@@ -1455,6 +1455,7 @@ enum ELevelFlags
 	// [DISDAIN]
 	DISDAINLEVELFLAGS_NOUSERSAVE		= 0x00000001,	// are saves disabled?
 	DISDAINLEVELFLAGS_NOAUTOMAP			= 0x00000002,	// is the automap disabled?
+	DISDAINLEVELFLAGS_NOMAPTITLE		= 0X00000004,	// don't draw map title (read by DrawMapTitle and TickMapTitle in ZScript)
 };
 
 // [RH] Compatibility flags.

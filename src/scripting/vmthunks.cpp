@@ -3049,6 +3049,7 @@ DEFINE_FIELD_BIT(FLevelLocals, flags3, removeitems, LEVEL3_REMOVEITEMS)
 // [DISDAIN]
 DEFINE_FIELD_BIT(FLevelLocals, disdainLevelFlags, nousersave, DISDAINLEVELFLAGS_NOUSERSAVE)
 DEFINE_FIELD_BIT(FLevelLocals, disdainLevelFlags, noautomap, DISDAINLEVELFLAGS_NOAUTOMAP)
+DEFINE_FIELD_BIT(FLevelLocals, disdainLevelFlags, nomaptitle, DISDAINLEVELFLAGS_NOMAPTITLE)
 
 DEFINE_FIELD_X(Sector, sector_t, floorplane)
 DEFINE_FIELD_X(Sector, sector_t, ceilingplane)
