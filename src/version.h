@@ -121,5 +121,7 @@ const char *GetGitTime();
 const char *GetGitTag();
 int GetGitDistance();
 
+#define LIGHTMAP_VERSION 0xD15D4190 // LIGHTMAP lump version
+
 // [DISDAIN]
 #define DISDAINVERSION "2"

@@ -36,37 +36,42 @@ T smoothstep(const T edge0, const T edge1, const T x)
 	return t * t * (3.0 - 2.0 * t);
 }
 
-LightProbe* FindLightProbe(FLevelLocals* level, float x, float y, float z)
+FVector3 LightProbe::CalculateColor(FLevelLocals* level) const
+{
+	FVector3 result = FVector3(Red, Green, Blue);
+	return result;
+}
+
+LightProbe* FindLightProbe(FLevelLocals* level, float x, float y, float z, float floorz)
 {
 	LightProbe* foundprobe = nullptr;
 	if (level->LightProbes.Size() > 0)
 	{
 #if 1
 		double rcpCellSize = 1.0 / level->LPCellSize;
-		int gridCenterX = (int)std::floor(x * rcpCellSize) - level->LPMinX;
-		int gridCenterY = (int)std::floor(y * rcpCellSize) - level->LPMinY;
+		int gridX = (int)std::floor(x * rcpCellSize) - level->LPMinX;
+		int gridY = (int)std::floor(y * rcpCellSize) - level->LPMinY;
 		int gridWidth = level->LPWidth;
 		int gridHeight = level->LPHeight;
 		float lastdist = 0.0f;
-		for (int gridY = gridCenterY - 1; gridY <= gridCenterY + 1; gridY++)
+
+		if (gridX >= 0 && gridY >= 0 && gridX < gridWidth && gridY < gridHeight)
 		{
-			for (int gridX = gridCenterX - 1; gridX <= gridCenterX + 1; gridX++)
+			const LightProbeCell& cell = level->LPCells[gridX + (size_t)gridY * gridWidth];
+			for (int i = 0; i < cell.NumProbes; i++)
 			{
-				if (gridX >= 0 && gridY >= 0 && gridX < gridWidth && gridY < gridHeight)
+				LightProbe* probe = cell.FirstProbe + i;
+				// Check the probe isn't under the floor, which can happen with thin 3D floors
+				if (floorz < probe->Z)
 				{
-					const LightProbeCell& cell = level->LPCells[gridX + (size_t)gridY * gridWidth];
-					for (int i = 0; i < cell.NumProbes; i++)
+					float dx = probe->X - x;
+					float dy = probe->Y - y;
+					float dz = probe->Z - z;
+					float dist = dx * dx + dy * dy + dz * dz;
+					if (!foundprobe || dist < lastdist)
 					{
-						LightProbe* probe = cell.FirstProbe + i;
-						float dx = probe->X - x;
-						float dy = probe->Y - y;
-						float dz = probe->Z - z;
-						float dist = dx * dx + dy * dy + dz * dz;
-						if (!foundprobe || dist < lastdist)
-						{
-							foundprobe = probe;
-							lastdist = dist;
-						}
+						foundprobe = probe;
+						lastdist = dist;
 					}
 				}
 			}
@@ -91,6 +96,52 @@ LightProbe* FindLightProbe(FLevelLocals* level, float x, float y, float z)
 	return foundprobe;
 }
 
+bool TryGetLightProbeColor(FLevelLocals* level, AActor* actor, FVector3& out)
+{
+	if (!actor)
+	{
+		return false;
+	}
+
+	if (actor != nullptr && actor->renderflags2 & RF2_TRACELIT)
+		return false;
+
+	DVector3 samplePos = actor->GetLightProbeSamplePosition(level->LPCellSize);
+
+	return TryGetLightProbeColor(level, samplePos.X, samplePos.Y, samplePos.Z, out, actor->floorz);
+}
+
+bool TryGetLightProbeColor(FLevelLocals* level, float x, float y, float z, FVector3& out, float floorz)
+{
+	if (LightProbe* probe = FindLightProbe(level, x, y, z, floorz))
+	{
+		out = probe->CalculateColor(level);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+static bool TraceLightVisbility(FLightNode* node, const FVector3& L, float dist)
+{
+	FDynamicLight* light = node->lightsource;
+	if (!light->Trace() || !level.levelMesh)
+		return true;
+
+	// Note: this is not thread safe (modifies validcount and calls other setup functions)
+	// FTraceResults results;
+	// return !Trace(light->Pos, light->Sector, DVector3(-L.X, -L.Y, -L.Z), dist, 0, ML_BLOCKING, nullptr, results);
+
+	return level.levelMesh->Trace(FVector3((float)light->Pos.X, (float)light->Pos.Y, (float)light->Pos.Z), FVector3(-L.X, -L.Y, -L.Z), dist);
+}
+
+static bool TraceSunVisibility(float x, float y, float z)
+{
+	return level.LMTextureCount != 0 && level.levelMesh->TraceSky(FVector3(x, y, z), level.SunDirection, 10000.0f);
+}
+
 //==========================================================================
 //
 // Sets a single light value from all dynamic lights affecting the specified location
@@ -105,12 +156,14 @@ void HWDrawInfo::GetDynSpriteLight(AActor *self, float x, float y, float z, FSec
 
 	out[0] = out[1] = out[2] = 0.f;
 
-	LightProbe* probe = FindLightProbe(Level, x, y, z);
-	if (probe)
+	bool isTraceLit = (self && (self->renderflags2 & RF2_TRACELIT));
+
+	if (isTraceLit && TraceSunVisibility(x, y, z))
 	{
-		out[0] = probe->Red;
-		out[1] = probe->Green;
-		out[2] = probe->Blue;
+		float si = Level->SunIntensity;
+		out[0] = Level->SunColor.X * si;
+		out[1] = Level->SunColor.Y * si;
+		out[2] = Level->SunColor.Z * si;
 	}
 
 	// Go through both light lists
@@ -153,52 +206,58 @@ void HWDrawInfo::GetDynSpriteLight(AActor *self, float x, float y, float z, FSec
 				{
 					dist = sqrtf(dist);	// only calculate the square root if we really need it.
 
-					frac = 1.0f - (dist / radius);
-
-					if (light->IsSpot())
-					{
+					if (light->IsSpot() || light->Trace())
 						L *= -1.0f / dist;
-						DAngle negPitch = -light->Pitch;
-						DAngle Angle = light->Yaw;
-						double xyLen = negPitch.Cos();
-						double spotDirX = -Angle.Cos() * xyLen;
-						double spotDirY = -Angle.Sin() * xyLen;
-						double spotDirZ = -negPitch.Sin();
-						double cosDir = L.X * spotDirX + L.Y * spotDirY + L.Z * spotDirZ;
-						frac *= (float)smoothstep(light->pSpotOuterAngle->Cos(), light->pSpotInnerAngle->Cos(), cosDir);
-					}
 
-					if (frac > 0 && (!light->shadowmapped || (light->GetRadius() > 0 && screen->mShadowMap.ShadowTest(light->Pos, { x, y, z }))))
+					if ((isTraceLit && TraceLightVisbility(node, L, dist)) || (!isTraceLit && !light->Trace()))
 					{
-						lr = light->GetRed() / 255.0f;
-						lg = light->GetGreen() / 255.0f;
-						lb = light->GetBlue() / 255.0f;
+						frac = 1.0f - (dist / radius);
 
-						if (light->target && (light->target->renderflags2 & RF2_LIGHTMULTALPHA))
+						if (light->IsSpot())
 						{
-							float alpha = (float)light->target->Alpha;
-							lr *= alpha;
-							lg *= alpha;
-							lb *= alpha;
+						
+							DAngle negPitch = -light->Pitch;
+							DAngle Angle = light->Yaw;
+							double xyLen = negPitch.Cos();
+							double spotDirX = -Angle.Cos() * xyLen;
+							double spotDirY = -Angle.Sin() * xyLen;
+							double spotDirZ = -negPitch.Sin();
+							double cosDir = L.X * spotDirX + L.Y * spotDirY + L.Z * spotDirZ;
+							frac *= (float)smoothstep(light->pSpotOuterAngle->Cos(), light->pSpotInnerAngle->Cos(), cosDir);
 						}
 
-						// Get GLDEFS intensity
-						lr *= light->GetLightDefIntensity();
-						lg *= light->GetLightDefIntensity();
-						lb *= light->GetLightDefIntensity();
-
-						if (light->IsSubtractive())
+						if (frac > 0 && (!light->shadowmapped || (light->GetRadius() > 0 && screen->mShadowMap.ShadowTest(light->Pos, { x, y, z }))))
 						{
-							float bright = (float)FVector3(lr, lg, lb).Length();
-							FVector3 lightColor(lr, lg, lb);
-							lr = (bright - lr) * -1;
-							lg = (bright - lg) * -1;
-							lb = (bright - lb) * -1;
-						}
+							lr = light->GetRed() / 255.0f;
+							lg = light->GetGreen() / 255.0f;
+							lb = light->GetBlue() / 255.0f;
 
-						out[0] += lr * frac;
-						out[1] += lg * frac;
-						out[2] += lb * frac;
+							if (light->target && (light->target->renderflags2 & RF2_LIGHTMULTALPHA))
+							{
+								float alpha = (float)light->target->Alpha;
+								lr *= alpha;
+								lg *= alpha;
+								lb *= alpha;
+							}
+
+							// Get GLDEFS intensity
+							lr *= light->GetLightDefIntensity();
+							lg *= light->GetLightDefIntensity();
+							lb *= light->GetLightDefIntensity();
+
+							if (light->IsSubtractive())
+							{
+								float bright = (float)FVector3(lr, lg, lb).Length();
+								FVector3 lightColor(lr, lg, lb);
+								lr = (bright - lr) * -1;
+								lg = (bright - lg) * -1;
+								lb = (bright - lb) * -1;
+							}
+
+							out[0] += lr * frac;
+							out[1] += lg * frac;
+							out[2] += lb * frac;
+						}
 					}
 				}
 			}
@@ -208,7 +267,7 @@ void HWDrawInfo::GetDynSpriteLight(AActor *self, float x, float y, float z, FSec
 
 void HWDrawInfo::GetDynSpriteLight(AActor *thing, particle_t *particle, float *out)
 {
-	if (thing && !(thing->renderflags2 & RF2_NODYNAMICLIGHTING))
+	if (thing && !(thing->renderflags2 & RF2_NODYNAMICLIGHTING) && !(thing->flags5 & MF5_BRIGHT))
 	{
 		GetDynSpriteLight(thing, (float)thing->X(), (float)thing->Y(), (float)thing->Center(), thing->section, thing->Sector->PortalGroup, out);
 	}
@@ -239,6 +298,13 @@ void hw_GetDynModelLight(AActor *self, FDynLightData &modellightdata)
 		float radiusSquared = actorradius * actorradius;
 		dl_validcount++;
 
+		bool isTraceLit = (self && (self->renderflags2 & RF2_TRACELIT));
+
+		if (isTraceLit && TraceSunVisibility(x, y, z))
+		{
+			AddSunLightToList(modellightdata, x, y, z, self->Level->SunDirection, self->Level->SunColor * self->Level->SunIntensity);
+		}
+
 		BSPWalkCircle(self->Level, x, y, radiusSquared, [&](subsector_t *subsector) // Iterate through all subsectors potentially touched by actor
 		{
 			auto section = subsector->section;
@@ -266,7 +332,15 @@ void hw_GetDynModelLight(AActor *self, FDynLightData &modellightdata)
 						{
 							if (std::find(addedLights.begin(), addedLights.end(), light) == addedLights.end()) // Check if we already added this light from a different subsector
 							{
-								AddLightToList(modellightdata, group, light, true);
+								FVector3 L(dx, dy, dz);
+								float dist = sqrtf(distSquared);
+
+								if (light->Trace())
+									L *= 1.0f / dist;
+
+								if ((isTraceLit && TraceLightVisbility(node, L, dist)) || (!isTraceLit && !light->Trace()))
+									AddLightToList(modellightdata, group, light, true);
+
 								addedLights.Push(light);
 							}
 						}

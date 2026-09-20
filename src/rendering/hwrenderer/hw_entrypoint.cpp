@@ -46,6 +46,7 @@ EXTERN_CVAR(Bool, cl_capfps)
 extern bool NoInterpolateView;
 
 static SWSceneDrawer *swdrawer;
+TArray<AActor*> Coronas;
 
 void CleanSWDrawer()
 {
@@ -310,6 +311,7 @@ static void CheckTimer(FRenderState &state, uint64_t ShaderStartTime)
 
 sector_t* RenderView(player_t* player)
 {
+	Coronas.Clear();
 	auto RenderState = screen->RenderState();
 	RenderState->SetVertexBuffer(screen->mVertexData);
 	screen->mVertexData->Reset();
