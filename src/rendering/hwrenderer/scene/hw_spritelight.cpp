@@ -270,46 +270,54 @@ void HWDrawInfo::GetDynSpriteLight(AActor *thing, particle_t *particle, float *o
 // For multithread processing each worker thread needs its own copy, though.
 static thread_local TArray<FDynamicLight*> addedLightsArray;
 
-void hw_GetDynModelLight(AActor *self, FDynLightData &modellightdata)
+void hw_GetDynModelLight(AActor *self, DVisualThinker* vt, FDynLightData &modellightdata)
 {
 	modellightdata.Clear();
 
-	if (self && self->Sector)
+	if ((self && self->Sector) || (vt && vt->cursector && vt->PT.subsector))
 	{
-		float x = (float)self->X();
-		float y = (float)self->Y();
-		float z = (float)self->Center();
-		float actorradius = (float)self->RenderRadius();
+		float actorradius = vt ? 0 : (float)self->RenderRadius();
+		float x = self ? (float)self->X() : (float)vt->PT.Pos.X;
+		float y = self ? (float)self->Y() : (float)vt->PT.Pos.Y;
+		float z = self ? (float)self->Center() : (float)vt->PT.Pos.Z;
 
-		bool isTraceLit = (self && (self->renderflags2 & RF2_TRACELIT));
+		// [DISDAIN] don't bother tracelighting visual thinker models
+		bool isTraceLit = self ? (self && (self->renderflags2 & RF2_TRACELIT)) : false;
 
 		if (isTraceLit && TraceSunVisibility(x, y, z))
 		{
 			AddSunLightToList(modellightdata, x, y, z, self->Level->SunDirection, self->Level->SunColor * self->Level->SunIntensity);
 		}
 
-		if(actorradius <= gl_model_light_optimization_radius)
+		if(vt || actorradius <= gl_model_light_optimization_radius)
 		{
-			int group = self->Sector->PortalGroup;
-			FSection *sec = self->section;
+			int group = self ? self->Sector->PortalGroup : vt->cursector->PortalGroup;
+			FSection *sec = self ? self->section : vt->PT.subsector->section;
 
 			for(FDynamicLight * light : sec->dlist)
 			{
-				if (light->ShouldLightActor(self))
+				if (vt || light->ShouldLightActor(self))
 				{
-					DVector3 pos = light->PosRelative(group);
-					double dx = pos.X - x;
-					double dy = pos.Y - y;
-					double dz = pos.Z - z;
-					double distSquared = dx * dx + dy * dy + dz * dz;
-					FVector3 L(dx, dy, dz);
-					float dist = sqrtf(distSquared);
-
-					if (light->Trace())
-						L *= 1.0f / dist;
-
-					if ((isTraceLit && TraceLightVisbility(light, L, dist)) || (!isTraceLit && !light->Trace()))
+					if (vt)
+					{
 						AddLightToList(modellightdata, group, light, true);
+					}
+					else
+					{
+						DVector3 pos = light->PosRelative(group);
+						double dx = pos.X - x;
+						double dy = pos.Y - y;
+						double dz = pos.Z - z;
+						double distSquared = dx * dx + dy * dy + dz * dz;
+						FVector3 L(dx, dy, dz);
+						float dist = sqrtf(distSquared);
+
+						if (light->Trace())
+							L *= 1.0f / dist;
+
+						if ((isTraceLit && TraceLightVisbility(light, L, dist)) || (!isTraceLit && !light->Trace()))
+							AddLightToList(modellightdata, group, light, true);
+					}
 				}
 			}
 		}
