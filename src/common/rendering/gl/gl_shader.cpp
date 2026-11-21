@@ -1084,5 +1084,67 @@ void gl_DestroyUserShaders()
 {
 	// todo
 }
-
 }
+
+#define GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX 0x9047
+#define GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
+#define GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
+#define GPU_MEMORY_INFO_EVICTION_COUNT_NVX 0x904A
+#define GPU_MEMORY_INFO_EVICTED_MEMORY_NVX 0x904B
+
+#define VBO_FREE_MEMORY_ATI 0x87FB
+#define TEXTURE_FREE_MEMORY_ATI 0x87FC
+#define RENDERBUFFER_FREE_MEMORY_ATI 0x87FD
+
+static FString FormatKB(int kb)
+{
+	int gb = kb / (1024 * 1024);
+	kb -= gb * (1024 * 1024);
+	int mb = kb / 1024;
+	kb -= mb * 1024;
+	FString tmp = "";
+	tmp.Format("%d GB %d MB %d KB", gb, mb, kb);
+	return tmp;
+}
+
+void PrintVRAM_NV(FString &out)
+{
+	int dedicatedMemoryNVidia = -1;
+	glGetIntegerv(GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &dedicatedMemoryNVidia);
+	int totalMemoryNVidia = -1;
+	glGetIntegerv(GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &totalMemoryNVidia);
+	int freeMemoryNVidia = -1;
+	glGetIntegerv(GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &freeMemoryNVidia);
+	int evictionCountNVidia = -1;
+	glGetIntegerv(GPU_MEMORY_INFO_EVICTION_COUNT_NVX, &evictionCountNVidia);
+	int evictedMemoryNVidia = -1;
+	glGetIntegerv(GPU_MEMORY_INFO_EVICTED_MEMORY_NVX, &evictedMemoryNVidia);
+
+	out.AppendFormat("Dedicated VRAM: %s\n", FormatKB(dedicatedMemoryNVidia).GetChars());
+	out.AppendFormat("Total VRAM: %s\n", FormatKB(totalMemoryNVidia).GetChars());
+	out.AppendFormat("Free VRAM: %s\n", FormatKB(freeMemoryNVidia).GetChars());
+	out.AppendFormat("Eviction Count: %d\n", evictionCountNVidia);
+	out.AppendFormat("Evicted Memory: %s", FormatKB(evictedMemoryNVidia).GetChars());
+}
+
+void PrintVRAM_ATI(FString &out)
+{
+	struct gpu_memory_info_t
+	{
+		int total_free = -1;
+		int largest_block = -1;
+		int total_aux_free = -1;
+		int largest_aux_block = -1;
+	};
+
+	gpu_memory_info_t texture_free_memory;
+
+	glGetIntegerv(TEXTURE_FREE_MEMORY_ATI, &texture_free_memory.total_free);
+
+	out.AppendFormat("VRAM:\n");
+	out.AppendFormat("    Total Free: %s\n", FormatKB(texture_free_memory.total_free).GetChars());
+	out.AppendFormat("    Largest Free Block: %s\n", FormatKB(texture_free_memory.largest_block).GetChars());
+	out.AppendFormat("    Total Aux. Free: %s\n", FormatKB(texture_free_memory.total_aux_free).GetChars());
+	out.AppendFormat("    Largest Free Aux. Block: %s\n", FormatKB(texture_free_memory.largest_aux_block).GetChars());
+}
+

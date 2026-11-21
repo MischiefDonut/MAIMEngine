@@ -5763,10 +5763,13 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, GetBoneCount, GetBoneCountNative)
 //
 //================================================
 
+FModel * FindFModel(AActor * self);
+
 static int GetAnimStartFrameNative(AActor * self, int  animName_i)
 {
 	FName anim_name {ENamedName(animName_i)};
-	FModel * mdl = SetGetBoneShared<false, false>(self, 0);
+	FModel * mdl = FindFModel(self);
+	if(!mdl) return -1;
 	return mdl->FindFirstFrame(anim_name);
 }
 
@@ -5781,7 +5784,8 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, GetAnimStartFrame, GetAnimStartFrameNative
 static int GetAnimEndFrameNative(AActor * self, int  animName_i)
 {
 	FName anim_name {ENamedName(animName_i)};
-	FModel * mdl = SetGetBoneShared<false, false>(self, 0);
+	FModel * mdl = FindFModel(self);
+	if(!mdl) return -1;
 	return mdl->FindLastFrame(anim_name);
 }
 
@@ -5796,7 +5800,8 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, GetAnimEndFrame, GetAnimEndFrameNative)
 static double GetAnimFramerateNative(AActor * self, int  animName_i)
 {
 	FName anim_name {ENamedName(animName_i)};
-	FModel * mdl = SetGetBoneShared<false, false>(self, 0);
+	FModel * mdl = FindFModel(self);
+	if(!mdl) return -1;
 	return mdl->FindFramerate(anim_name);
 }
 
@@ -5814,14 +5819,24 @@ DEFINE_ACTION_FUNCTION(AActor, GetBoneFramePose)
 	PARAM_INT(bone_index);
 	PARAM_INT(frame_index);
 
-	FModel * mdl = GetBoneShared(self, 0, bone_index, nullptr);
+	FModel * mdl = FindFModel(self);
 
 	DVector3 translation(0,0,0);
 	DVector4 rotation(0,0,0,1);
 	DVector3 scaling(0,0,0);
 
-	if(mdl && frame_index < mdl->NumFrames())
+	if(mdl)
 	{
+		if(bone_index < 0 || bone_index >= mdl->NumJoints())
+		{
+			ThrowAbortException(X_OTHER, "bone index out of range");
+		}
+
+		if(frame_index < 0 || frame_index >= mdl->NumFrames())
+		{
+			ThrowAbortException(X_OTHER, "frame index out of range");
+		}
+
 		TRS pose = mdl->GetJointPose(bone_index, frame_index);
 
 		translation = DVector3(pose.translation);
@@ -5854,16 +5869,26 @@ DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneFramePose)
 	PARAM_NAME(bone_name);
 	PARAM_INT(frame_index);
 
-	int bone_index;
-
-	FModel * mdl = GetBoneShared(self, 0, bone_index, &bone_name);
+	FModel * mdl = FindFModel(self);
 
 	DVector3 translation(0,0,0);
 	DVector4 rotation(0,0,0,1);
 	DVector3 scaling(0,0,0);
 
-	if(mdl && frame_index < mdl->NumFrames())
+	if(mdl)
 	{
+		int bone_index = mdl->FindJoint(bone_name);
+
+		if(bone_index < 0 || bone_index >= mdl->NumJoints())
+		{
+			ThrowAbortException(X_OTHER, "Could not find bone '%s'", bone_name.GetChars());
+		}
+
+		if(frame_index < 0 || frame_index >= mdl->NumFrames())
+		{
+			ThrowAbortException(X_OTHER, "frame index out of range");
+		}
+
 		TRS pose = mdl->GetJointPose(bone_index, frame_index);
 
 		translation = DVector3(pose.translation);
@@ -5895,9 +5920,16 @@ DEFINE_ACTION_FUNCTION(AActor, GetBoneBasePosition)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(bone_index);
 
-	FModel * mdl = GetBoneShared(self, 0, bone_index, nullptr);
+	FModel * mdl = FindFModel(self);
 
-	ACTION_RETURN_VEC3(DVector3(mdl->GetJointPosition(bone_index)));
+	if(mdl)
+	{
+		ACTION_RETURN_VEC3(DVector3(mdl->GetJointPosition(bone_index)));
+	}
+	else
+	{
+		ACTION_RETURN_VEC3(DVector3(0,0,0));
+	}
 }
 
 DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneBasePosition)
@@ -5905,11 +5937,23 @@ DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneBasePosition)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_NAME(bone_name);
 
-	int bone_index;
+	FModel * mdl = FindFModel(self);
 
-	FModel * mdl = GetBoneShared(self, 0, bone_index, &bone_name);
+	if(mdl)
+	{
+		int bone_index = mdl->FindJoint(bone_name);
 
-	ACTION_RETURN_VEC3(DVector3(mdl->GetJointPosition(bone_index)));
+		if(bone_index < 0 || bone_index >= mdl->NumJoints())
+		{
+			ThrowAbortException(X_OTHER, "Could not find bone '%s'", bone_name.GetChars());
+		}
+
+		ACTION_RETURN_VEC3(DVector3(mdl->GetJointPosition(bone_index)));
+	}
+	else
+	{
+		ACTION_RETURN_VEC3(DVector3(0,0,0));
+	}
 }
 
 DEFINE_ACTION_FUNCTION(AActor, GetBoneBaseRotation)
@@ -5917,9 +5961,16 @@ DEFINE_ACTION_FUNCTION(AActor, GetBoneBaseRotation)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(bone_index);
 
-	FModel * mdl = GetBoneShared(self, 0, bone_index, nullptr);
+	FModel * mdl = FindFModel(self);
 
-	ACTION_RETURN_VEC4(DVector4(mdl->GetJointRotation(bone_index)));
+	if(mdl)
+	{
+		ACTION_RETURN_VEC4(DVector4(mdl->GetJointRotation(bone_index)));
+	}
+	else
+	{
+		ACTION_RETURN_VEC4(DVector4(0,0,0,0));
+	}
 }
 
 DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneBaseRotation)
@@ -5927,11 +5978,23 @@ DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneBaseRotation)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_NAME(bone_name);
 
-	int bone_index;
+	FModel * mdl = FindFModel(self);
 
-	FModel * mdl = GetBoneShared(self, 0, bone_index, &bone_name);
+	if(mdl)
+	{
+		int bone_index = mdl->FindJoint(bone_name);
 
-	ACTION_RETURN_VEC4(DVector4(mdl->GetJointRotation(bone_index)));
+		if(bone_index < 0 || bone_index >= mdl->NumJoints())
+		{
+			ThrowAbortException(X_OTHER, "Could not find bone '%s'", bone_name.GetChars());
+		}
+
+		ACTION_RETURN_VEC4(DVector4(mdl->GetJointRotation(bone_index)));
+	}
+	else
+	{
+		ACTION_RETURN_VEC4(DVector4(0,0,0,0));
+	}
 }
 
 //================================================
@@ -6503,6 +6566,8 @@ bool SetAnimationInternal(AActor * self, FName animName, double framerate, int s
 				calcFrames(anims->curAnim, tic, to, inter);
 
 				const TArray<TRS>* animationData = animation->AttachAnimationData();
+
+				assert(to.frame1 < animation->NumFrames() && to.frame2 < animation->NumFrames());
 
 				ModelAnimFrame tmp = animation->PrecalculateFrame(anims->prevAnim, to, inter, animationData);
 
@@ -7127,7 +7192,7 @@ DEFINE_ACTION_FUNCTION(AActor, SetAnimationLayerFrameRateUI)
 	ACTION_RETURN_POINTER(AnimInfoToAnimLayer(nativeAnims));
 }
 
-DPrecalculatedAnimationFrame* CalculateAnimationInternal(AActor * self, AnimInfo *anims, double tic)
+DPrecalculatedAnimationFrame* CalculateAnimationInternal(AActor * self, AnimInfo *anims, double tic, bool &oob, FString &oob_message)
 {
 	FModel * mdl = FindFModel(self);
 
@@ -7140,6 +7205,16 @@ DPrecalculatedAnimationFrame* CalculateAnimationInternal(AActor * self, AnimInfo
 	float inter;
 
 	calcFrames(anims->curAnim, tic, to, inter);
+
+	int max = mdl->NumFrames();
+
+	if(to.frame1 >= max || to.frame2 >= max)
+	{
+		int oob_frame = (to.frame1 >= max) ? to.frame1 : to.frame2;
+		oob_message.Format("Frame %d is out of bounds (%d is the max)", oob_frame, max);
+		oob = true;
+		return nullptr;
+	}
 
 	ModelAnimFrame frame = mdl->PrecalculateFrame(anims->prevAnim, to, inter, mdl->AttachAnimationData());
 	assert(std::holds_alternative<ModelAnimFramePrecalculatedIQM>(frame));
@@ -7161,9 +7236,18 @@ DEFINE_ACTION_FUNCTION(AActor, CalculateAnimation)
 
 	AnimInfo nativeAnims = AnimLayerToAnimInfo(layer);
 
-	DPrecalculatedAnimationFrame* calc = CalculateAnimationInternal(self, &nativeAnims, self->GetModelTimer() + 1);
+	bool oob = false;
+	FString oob_message;
+
+	DPrecalculatedAnimationFrame* calc = CalculateAnimationInternal(self, &nativeAnims, self->GetModelTimer() + 1, oob, oob_message);
 
 	RestoreAnimLayer(layer, nativeAnims);
+
+	if(oob)
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, oob_message.GetChars());
+		ACTION_RETURN_POINTER(nullptr);
+	}
 
 	ACTION_RETURN_POINTER(calc);
 }
@@ -7180,9 +7264,18 @@ DEFINE_ACTION_FUNCTION(AActor, CalculateAnimationUI)
 
 	AnimInfo nativeAnims = AnimLayerToAnimInfo(layer);
 
-	DPrecalculatedAnimationFrame* calc = CalculateAnimationInternal(self, &nativeAnims, self->GetModelTimer() + I_GetTimeFrac());
+	bool oob = false;
+	FString oob_message;
+
+	DPrecalculatedAnimationFrame* calc = CalculateAnimationInternal(self, &nativeAnims, self->GetModelTimer() + I_GetTimeFrac(), oob, oob_message);
 
 	RestoreAnimLayer(layer, nativeAnims);
+
+	if(oob)
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, oob_message.GetChars());
+		ACTION_RETURN_POINTER(nullptr);
+	}
 
 	ACTION_RETURN_POINTER(calc);
 }
@@ -7201,6 +7294,15 @@ DEFINE_ACTION_FUNCTION(AActor, CalculateAnimationFrame)
 
 	if(!mdl)
 	{
+		ACTION_RETURN_POINTER(nullptr);
+	}
+
+	int max = mdl->NumFrames();
+
+	if(iframe->frame1 >= max || iframe->frame2 >= max)
+	{
+		int oob = (iframe->frame1 >= max) ? iframe->frame1 : iframe->frame2;
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Frame %d is out of bounds (%d is the max)", oob, max);
 		ACTION_RETURN_POINTER(nullptr);
 	}
 
