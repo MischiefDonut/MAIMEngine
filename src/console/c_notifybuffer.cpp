@@ -117,7 +117,7 @@ void FNotifyBuffer::AddString(int printlevel, FString source)
 	}
 
 	source.StripRight();
-    // insert the suffix directly as part ofthe message string 
+    // insert the suffix directly as part ofthe message string
     if (countedIdentical > 1)
     {
 		source += " (";
@@ -140,19 +140,20 @@ void FNotifyBuffer::AddString(int printlevel, FString source)
 	}
 
 	int width = DisplayWidth / active_con_scaletext(twod, generic_ui);
-	FFont *font = generic_ui ? NewSmallFont : AlternativeSmallFont;
+	FFont *font = FFont::GetSmallTextFont(generic_ui ? NewSmallFont : AlternativeSmallFont);
 	FNotifyBufferBase::AddString(printlevel & PRINT_TYPES, font, source, width, con_notifytime, con_notifylines);
 }
 
 void FNotifyBuffer::Draw()
 {
 	bool center = (con_centernotify != 0.f);
-	int line, lineadv, color, j;
+	int line, lineadv, color, j, left;
 	bool canskip;
 
-	FFont* font = generic_ui ? NewSmallFont : AlternativeSmallFont;
+	FFont* font = FFont::GetSmallTextFont(generic_ui ? NewSmallFont : AlternativeSmallFont);
 
 	line = Top + font->GetDisplacement();
+	left = font->GetDisplacement();
 	canskip = true;
 
 	lineadv = font->GetHeight ();
@@ -180,7 +181,7 @@ void FNotifyBuffer::Draw()
 
 			int scale = active_con_scaletext(twod, generic_ui);
 			int textWidth = font->StringWidth(notify.Text);
-			int xPos = 0;
+			int xPos = left;
 
             if (center)
             {

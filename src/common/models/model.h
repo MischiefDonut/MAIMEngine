@@ -37,6 +37,7 @@ class PClass;
 class AActor;
 struct FSpriteModelFrame;
 struct FLevelLocals;
+class DVisualThinker;
 
 FTextureID LoadSkin(const char* path, const char* fn);
 void FlushModels();
@@ -81,6 +82,7 @@ public:
 	friend void ParseModelDefLump(int Lump);
 
 	VSMatrix ObjectToWorldMatrix(AActor * actor, float x, float y, float z, double ticFrac);
+	VSMatrix ObjectToWorldMatrix(DVisualThinker * vt, float x, float y, float z, double ticFrac);
 	VSMatrix ObjectToWorldMatrix(FLevelLocals *Level, DVector3 translation, DRotator rotation, DVector2 scaling, unsigned int flags, double tic);
 };
 
@@ -131,7 +133,7 @@ public:
 	virtual int FindLastFrame(FName name) { return FErr_NotFound; }
 	virtual double FindFramerate(FName name) { return FErr_NotFound; }
 
-	virtual void RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int frame, int frame2, double inter, FTranslationID translation, const FTextureID* surfaceskinids, int boneStartPosition) = 0;
+	virtual void RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int frame, int frame2, double inter, FTranslationID translation, const FTextureID* surfaceskinids, int boneStartPosition, AActor * act) = 0;
 	virtual void BuildVertexBuffer(FModelRenderer *renderer) = 0;
 	virtual void AddSkins(uint8_t *hitlist, const FTextureID* surfaceskinids) = 0;
 	virtual float getAspectFactor(float vscale) { return 1.f; }

@@ -15,6 +15,7 @@
 **
 */
 
+#include "colorspace.h"
 #include "sbar.h"
 #include "r_utility.h"
 #include "v_video.h"
@@ -93,7 +94,7 @@ void HWDrawInfo::DrawPSprite(HUDSprite *huds, FRenderState &state)
 		state.AlphaFunc(Alpha_GEqual, thresh);
 		FTranslationID trans = huds->weapon->GetTranslation();
 		if ((huds->weapon->Flags & PSPF_PLAYERTRANSLATED)) trans = huds->owner->Translation;
-		state.SetMaterial(huds->texture, UF_Sprite, CTF_Expand, CLAMP_XY_NOMIP, trans, huds->OverrideShader);
+		state.SetMaterial(huds->texture, UF_Sprite, CTF_Expand, CLAMP_XY_NOMIP, trans, huds->OverrideShader, nullptr);
 		state.Draw(DT_TriangleStrip, huds->mx, 4);
 	}
 
@@ -102,6 +103,7 @@ void HWDrawInfo::DrawPSprite(HUDSprite *huds, FRenderState &state)
 	state.SetObjectColor(0xffffffff);
 	state.SetAddColor(0);
 	state.SetDynLight(0, 0, 0);
+	state.SetLightProbe(0, 0, 0);
 	state.EnableBrightmap(false);
 }
 
@@ -470,7 +472,7 @@ bool HUDSprite::GetWeaponRenderStyle(DPSprite *psp, AActor *playermo, sector_t *
 	}
 	if (!RenderStyle.IsVisible(alpha)) return false;	// if it isn't visible skip the rest.
 
-	PalEntry ThingColor = (playermo->RenderStyle.Flags & STYLEF_ColorIsFixed) ? playermo->fillcolor : 0xffffff;
+	PalEntry ThingColor = (playermo->RenderStyle.Flags & STYLEF_ColorIsFixed) ? playermo->fillcolor : Color::str("#fff");
 	ThingColor.a = 255;
 
 	const bool bright = isBright(psp);
@@ -746,6 +748,14 @@ void HWDrawInfo::PreparePlayerSprites2D(sector_t * viewsector, area_t in_area)
 			GetDynSpriteLight(playermo, nullptr, hudsprite.dynrgb);
 		}
 
+		FVector3 probeColor;
+		if (TryGetLightProbeColor(Level, (float)playermo->X(), (float)playermo->Y(), (float)playermo->Center(), probeColor))
+		{
+			hudsprite.dynrgb[0] += probeColor.X;
+			hudsprite.dynrgb[1] += probeColor.Y;
+			hudsprite.dynrgb[2] += probeColor.Z;
+		}
+
 		if (!hudsprite.GetWeaponRect(this, psp, spos.X, spos.Y, player, min<double>(bobFrac, frac))) continue;
 		hudsprites.Push(hudsprite);
 	}
@@ -845,23 +855,24 @@ void HWDrawInfo::PreparePlayerSprites3D(sector_t * viewsector, area_t in_area)
 		hudsprite.dynrgb[0] = hudsprite.dynrgb[1] = hudsprite.dynrgb[2] = 0;
 		hudsprite.lightindex = -1;
 		// set the lighting parameters
-		if (hudsprite.RenderStyle.BlendOp != STYLEOP_Shadow && Level->HasDynamicLights && !isFullbrightScene() && gl_light_sprites && !(playermo->renderflags2 & RF2_NODYNAMICLIGHTING))
+		if (hudsprite.RenderStyle.BlendOp != STYLEOP_Shadow && Level->HasDynamicLights && !isFullbrightScene() && gl_light_sprites && !(playermo->renderflags2 & RF2_NODYNAMICLIGHTING) && !(playermo->flags5 & MF5_BRIGHT))
 		{
 			if (!(smf_flags & MDL_NOPERPIXELLIGHTING))
 			{
-				hw_GetDynModelLight(playermo, lightdata);
+				hw_GetDynModelLight(playermo, nullptr, lightdata);
 				hudsprite.lightindex = screen->mLights->UploadLights(lightdata);
 			}
 			else
 			{
 				GetDynSpriteLight(playermo, nullptr, hudsprite.dynrgb);
 			}
-			LightProbe* probe = FindLightProbe(playermo->Level, playermo->X(), playermo->Y(), playermo->Center());
-			if (probe)
+
+			FVector3 probeColor;
+			if (TryGetLightProbeColor(playermo->Level, playermo->X(), playermo->Y(), playermo->Center(), probeColor))
 			{
-				hudsprite.dynrgb[0] = probe->Red;
-				hudsprite.dynrgb[1] = probe->Green;
-				hudsprite.dynrgb[2] = probe->Blue;
+				hudsprite.dynrgb[0] += probeColor.X;
+				hudsprite.dynrgb[1] += probeColor.Y;
+				hudsprite.dynrgb[2] += probeColor.Z;
 			}
 		}
 

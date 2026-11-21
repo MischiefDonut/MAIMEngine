@@ -85,6 +85,8 @@ public:
 	FShadowMapShader *mShadowMapShader = nullptr;
 
 	int mLightMapID = 0;
+	int mLightMapWidth = 0;
+	int mLightMapHeight = 0;
 
 	//FRotator mAngles;
 

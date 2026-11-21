@@ -140,6 +140,7 @@ public:
 	bool BeginObject(const char *name);
 	void EndObject();
 	bool HasKey(const char* name);
+	bool IsInt(const char* name);
 	bool HasObject(const char* name);
 	bool IsKeyNull(const char* name);
 	bool BeginArray(const char *name);
@@ -215,6 +216,12 @@ public:
 			EndArray();
 		}
 		return *this;
+	}
+
+	template<class T, size_t count>
+	FSerializer &Array(const char *key, std::array<T, count> &obj, bool fullcompare = false)
+	{
+		return Array(key, obj.data(), static_cast<int>(count), fullcompare);
 	}
 
 	template<class T>

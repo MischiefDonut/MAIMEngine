@@ -20,6 +20,7 @@
 
 #include "gl_renderstate.h"
 #include "name.h"
+#include "shaderuniforms.h"
 
 extern bool gl_shaderactive;
 
@@ -239,6 +240,7 @@ class FShader
 	FBufferedUniform1i muBoneIndexBase;
 	FBufferedUniformPE muFogColor;
 	FBufferedUniform4f muDynLightColor;
+	FBufferedUniform4f muLightProbeColor;
 	FBufferedUniformPE muObjectColor;
 	FBufferedUniformPE muObjectColor2;
 	FBufferedUniformPE muAddColor;
@@ -284,7 +286,7 @@ public:
 
 	~FShader();
 
-	bool Load(const char * name, const char * vert_prog_lump, const char * fragprog, const char * fragprog2, const char * light_fragprog, const char *defines);
+	bool Load(const char * name, const char * vert_prog_lump, const char * fragprog, const char * fragprog2, const char * light_fragprog, const char *defines, bool isGBuffer, AllShaderIndex type);
 
 	bool Bind();
 	unsigned int GetHandle() const { return hShader; }
@@ -328,7 +330,7 @@ class FShaderCollection
 public:
 	FShaderCollection(EPassType passType);
 	~FShaderCollection();
-	FShader *Compile(const char *ShaderName, const char *ShaderPath, const char *LightModePath, const char *shaderdefines, bool usediscard, EPassType passType);
+	FShader *Compile(const char *ShaderName, const char *ShaderPath, const char *LightModePath, const char *shaderdefines, bool usediscard, EPassType passType, AllShaderIndex type);
 	int Find(const char *mame);
 	bool CompileNextShader();
 	FShader *BindEffect(int effect);

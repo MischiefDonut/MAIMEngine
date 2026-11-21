@@ -12,7 +12,6 @@ include( CheckCXXCompilerFlag )
 include( CheckIncludeFile )
 include( CheckIncludeFiles )
 include( CheckLibraryExists )
-include( FindPkgConfig )
 
 if( DEM_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	option( NO_STRIP "Do not strip Release or MinSizeRel builds" )
@@ -50,12 +49,7 @@ if( NOT PROJECT_LIBRARIES )
 	set( PROJECT_LIBRARIES "" )
 endif()
 
-add_definitions( -DTHIS_IS_GZDOOM )
-
 if( WIN32 )
-
-	add_definitions( -D_WIN32 )
-
 	set( PROJECT_LIBRARIES
 		Xinput
 		advapi32
@@ -103,10 +97,8 @@ else()
 
 	# Non-Windows version also needs SDL except native OS X backend
 	if( NOT APPLE OR NOT OSX_COCOA_BACKEND )
-		find_package( SDL2 REQUIRED )
-		include_directories( SYSTEM "${SDL2_INCLUDE_DIR}" )
-		link_directories(${SDL2_LINK_DIR})
-		set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} "${SDL2_LIBRARY}" )
+		find_package( SDL2 CONFIG REQUIRED )
+		list( APPEND PROJECT_LIBRARIES SDL2::SDL2 )
 	endif()
 
 endif()
@@ -250,7 +242,6 @@ if( DEM_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	endif()
 
 	if( NOT NO_STRIP )
-		set (CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -s" )
 		set (CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL} -s" )
 	endif()
 endif()
@@ -302,8 +293,13 @@ if (HAVE_VULKAN)
 	list( APPEND PROJECT_LIBRARIES "zvulkan" )
 endif()
 
+add_subdirectory("common/thirdparty/freetype-2.13.3")
+add_subdirectory("common/thirdparty/harfbuzz-7.3.0")
+add_subdirectory("utility/trex")
+list( APPEND PROJECT_LIBRARIES "trex" )
+list( APPEND PROJECT_LIBRARIES "zmusic" )
 list( APPEND PROJECT_LIBRARIES "zwidget" )
-list( APPEND PROJECT_LIBRARIES "webp" )
+list( APPEND PROJECT_LIBRARIES "${WEBP_TARGET}" )
 
 message("Building for target architecture: ${TARGET_ARCHITECTURE}")
 
@@ -347,7 +343,7 @@ else()
 	message( SEND_ERROR "Could not find libvpx" )
 endif()
 
-include_directories( SYSTEM "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${ZMUSIC_INCLUDE_DIR}")
+include_directories( SYSTEM "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${ZMUSIC_INCLUDE_DIR}" "${BOOST_PFR_INCLUDE_DIR}" "${REFLECT_INCLUDE_DIR}")
 
 if( ${HAVE_VM_JIT} )
 	add_definitions( -DHAVE_VM_JIT )
@@ -567,6 +563,7 @@ file( GLOB HEADER_FILES
 	common/thirdparty/utf8proc/*.h
 	common/rendering/*.h
 	common/rendering/gl_load/*.h
+	common/rendering/gl/*.h
 	common/rendering/gles/*.h
 	common/rendering/hwrenderer/data/*.h
 	common/rendering/vulkan/*.h
@@ -874,7 +871,6 @@ set (PCH_SOURCES
 	playsim/mapthinkers/dsectoreffect.cpp
 	playsim/a_pickups.cpp
 	playsim/a_action.cpp
-	playsim/a_corona.cpp
 	playsim/a_decals.cpp
 	playsim/a_dynlight.cpp
 	playsim/a_flashfader.cpp
@@ -1120,6 +1116,7 @@ set (PCH_SOURCES
 	common/menu/messagebox.cpp
 	common/menu/optionmenu.cpp
 	common/menu/resolutionmenu.cpp
+	common/menu/advancedfontmenu.cpp
 	common/menu/menudef.cpp
 	common/menu/savegamemanager.cpp
 	common/statusbar/base_sbar.cpp
@@ -1142,6 +1139,7 @@ set (PCH_SOURCES
 	common/rendering/hwrenderer/data/hw_aabbtree.cpp
 	common/rendering/hwrenderer/data/hw_shadowmap.cpp
 	common/rendering/hwrenderer/data/hw_shaderpatcher.cpp
+	common/rendering/hwrenderer/data/hw_collision.cpp
 	common/rendering/hwrenderer/postprocessing/hw_postprocessshader.cpp
 	common/rendering/hwrenderer/postprocessing/hw_postprocess.cpp
 	common/rendering/hwrenderer/postprocessing/hw_postprocess_cvars.cpp
@@ -1210,15 +1208,13 @@ set (PCH_SOURCES
 	utility/nodebuilder/nodebuild_extract.cpp
 	utility/nodebuilder/nodebuild_gl.cpp
 	utility/nodebuilder/nodebuild_utility.cpp
+	utility/sc_include.cpp
 	utility/system_theme.cpp
+	utility/simdutf/simdutf.cpp
 
 	# [DISDAIN]
 	playsim/g_aimassist.cpp
 )
-
-if( ZMUSIC_SYSTEM_INSTALL OR NOT DEFINED BUILD_SHARED_LIBS OR BUILD_SHARED_LIBS)
-	set ( PCH_SOURCES ${PCH_SOURCES} common/utility/i_module.cpp )
-endif()
 
 if( ${HAVE_VM_JIT} )
 	set( PCH_SOURCES ${PCH_SOURCES} ${VM_JIT_SOURCES} )
@@ -1278,7 +1274,6 @@ set( GAME_SOURCES
 	common/filesystem/source/fs_stringpool.cpp
 	common/filesystem/source/unicode.cpp
 	common/filesystem/source/critsec.cpp
-
 )
 
 set( GAME_NONPCH_SOURCES ${GAME_SOURCES} )
@@ -1390,13 +1385,13 @@ include_directories(
 	xlat
 	utility
 	utility/nodebuilder
+	utility/simdutf
 	scripting
 	scripting/zscript
 	rendering
 	launcher
 	../libraries/ZVulkan/include
 	../libraries/ZWidget/include
-	../libraries/webp/include
 	../libraries/range_map/include
 	${SYSTEM_SOURCES_DIR}
 )
@@ -1431,6 +1426,13 @@ if( MSVC )
 		COMMENT "Adding manifest..."
 	)
 
+	# Workaround for https://developercommunity.visualstudio.com/t/10828473
+	# Remove this once VS2022 is EOL in 2027 (or 2032 for extended support)
+	if(MSVC_VERSION LESS 1951)
+		message(WARNING "MSVC_CONSTEVAL_BUG: This project uses c++20 features. Some older MSVC versions have bugs that prevent proper compilation. A workaround is being used for your configuration")
+		target_compile_definitions(zdoom PRIVATE MSVC_CONSTEVAL_BUG=1)
+	endif()
+
 endif()
 
 if (WIN32)
@@ -1446,47 +1448,23 @@ else()
 		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/link-make )
 	IF ("${INSTALL_RPATH}" STREQUAL "")
 		set_target_properties(zdoom PROPERTIES
-			#allow libzmusic.so.1 library in same folder as executable at runtime
-			INSTALL_RPATH "\$ORIGIN:\$ORIGIN/zmusic/build/source"
+			INSTALL_RPATH "\$ORIGIN"
 			BUILD_WITH_INSTALL_RPATH ON
 		)
 	endif()
 endif()
 
 add_custom_command(TARGET zdoom POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E make_directory "${ZDOOM_RESOURCE_DIR}/soundfonts"
-	COMMAND ${CMAKE_COMMAND} -E make_directory "${ZDOOM_RESOURCE_DIR}/fm_banks"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${CMAKE_SOURCE_DIR}/soundfont"
+		"${ZDOOM_RESOURCE_DIR}/soundfonts"
 
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-		"${CMAKE_SOURCE_DIR}/soundfont/MAIM.sf2"
-		"${ZDOOM_RESOURCE_DIR}/soundfonts/MAIM.sf2"
-
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-		"${CMAKE_SOURCE_DIR}/fm_banks/GENMIDI.GS.wopl"
-		"${ZDOOM_RESOURCE_DIR}/fm_banks/GENMIDI.GS.wopl"
-
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-		"${CMAKE_SOURCE_DIR}/fm_banks/gs-by-papiezak-and-sneakernets.wopn"
-		"${ZDOOM_RESOURCE_DIR}/fm_banks/gs-by-papiezak-and-sneakernets.wopn"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${CMAKE_SOURCE_DIR}/fm_banks"
+		"${ZDOOM_RESOURCE_DIR}/fm_banks"
 
 	VERBATIM
 )
-
-if ( NOT ZMUSIC_SYSTEM_INSTALL AND (NOT DEFINED BUILD_SHARED_LIBS OR BUILD_SHARED_LIBS))
-	# bring zmusic in
-	add_custom_command(TARGET zdoom POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different
-			$<TARGET_FILE:zmusic> $<TARGET_FILE_DIR:zdoom>)
-	if ( NOT WIN32 )
-		add_custom_command(TARGET zdoom POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E create_symlink
-				$<TARGET_FILE_NAME:zmusic> $<TARGET_SONAME_FILE_NAME:zmusic>
-			COMMAND ${CMAKE_COMMAND} -E create_symlink
-				$<TARGET_SONAME_FILE_NAME:zmusic> $<TARGET_LINKER_FILE_NAME:zmusic>
-			WORKING_DIRECTORY $<TARGET_FILE_DIR:zdoom>)
-	endif()
-	add_dependencies(zdoom zmusic)
-endif()
 
 if (VCPKG_TOOLCHAIN)
 	x_vcpkg_install_local_dependencies(TARGETS zdoom DESTINATION ".")
@@ -1555,19 +1533,14 @@ if( APPLE )
 	# Dymanic libraries like libvulkan.dylib or libMoltenVK.dylib will be loaded by dlopen()
 	# if placed in the directory with the main executable
 	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rpath @executable_path" )
+
+	# this is enabled with xcode, but not when using ninja. Explicitly enabling it here to make builds unified
+	target_compile_definitions( zdoom PRIVATE
+		_LIBCPP_HARDENING_MODE=$<IF:$<CONFIG:Debug>,_LIBCPP_HARDENING_MODE_DEBUG,_LIBCPP_HARDENING_MODE_FAST> )
 endif()
 
-if ( NOT ZMUSIC_SYSTEM_INSTALL )
-	if ( WIN32 OR APPLE )
-		# nothing to do
-	else()
-		install(TARGETS zmusic
-			LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-			PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-			COMPONENT "Game executable"
-		)
-	endif()
-endif()
+target_compile_options(zdoom PRIVATE
+	$<$<CXX_COMPILER_ID:AppleClang>:-fconstexpr-steps=100000000> )
 
 if( WIN32 )
 	set( INSTALL_PATH . CACHE STRING "Directory where the executable will be placed during install." )

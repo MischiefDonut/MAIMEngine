@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <string>
+#include <string_view>
 
 #ifdef _WIN32
 #include <utf8.h>
@@ -229,6 +230,7 @@ public:
 	FString &operator /= (const char *tail);
 
 	FString &operator << (const FString &tail) { return *this += tail; }
+	FString &operator << (std::string_view tail) { return AppendCStrPart(tail.data(), tail.length()); }
 	FString &operator << (const char *tail) { return *this += tail; }
 	FString &operator << (char tail) { return *this += tail; }
 
@@ -381,6 +383,8 @@ public:
 	// split a string into different lines of a specified maximum length (and when it needs to wrap, the maximum length can be reduced down to minWrapLen to avoid splitting words)
 	TArray<FString> SplitNewLines(int minWrapLen = -1, int maxLineLen = -1, EmptyTokenType keepEmpty = TOK_KEEPEMPTY) const;
 	void SplitNewLines(TArray<FString>& tokens, int minWrapLen = -1, int maxLineLen = -1, EmptyTokenType keepEmpty = TOK_KEEPEMPTY) const;
+
+	static FString RemoveColorTags(const FString &srcString);
 
 protected:
 	const FStringData *Data() const { return (FStringData *)Chars - 1; }

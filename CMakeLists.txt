@@ -10,7 +10,48 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(TESTING_FEATURES ON "Enable development features")
+macro(FEATURE NAME DESCRIPTION)
+	option( FEATURE_${NAME} "Feature: ${DESCRIPTION}" NO )
+	set( HAS_FEATURES TRUE )
+	list( APPEND ALL_FEATURES ${NAME} )
+	if ( ${FEATURE_${NAME}} OR ${TESTING_FEATURES} )
+		list(APPEND USED_FEATURES "FEATURE_${NAME}")
+	endif()
+endmacro()
+
+## BEGIN FEATURE FLAGS
+## set feature flags like: FEATURE(FOO "does something cool")
+## these are for indev features to allow for piecemeal PRs
+
+## END set feature flags here
+
+macro(FLAGS CONFIG CL_FLAGS CC_FLAGS)
+	if(MSVC)
+		set(CMAKE_C_FLAGS_${CONFIG} ${CL_FLAGS} CACHE STRING "${CONFIG} C flags" FORCE)
+		set(CMAKE_CXX_FLAGS_${CONFIG} ${CL_FLAGS} CACHE STRING "${CONFIG} C++ flags" FORCE)
+	else()
+		set(CMAKE_C_FLAGS_${CONFIG} ${CC_FLAGS} CACHE STRING "${CONFIG} C flags" FORCE)
+		set(CMAKE_CXX_FLAGS_${CONFIG} ${CC_FLAGS} CACHE STRING "${CONFIG} C++ flags" FORCE)
+	endif()
+endmacro()
+FLAGS(DEBUG           "/MTd /Zi /Od /RTC1"    "-g3")
+FLAGS(RELEASE         "/MT /Zi /O2 /DNDEBUG"  "-O2 -g1 -DNDEBUG")
+FLAGS(RELWITHDEBINFO  "/MT /Zi /O2"           "-O2 -g")
+FLAGS(MINSIZEREL      "/MT /O2 /Ob2 /DNDEBUG" "-O3 -DNDEBUG")
+if (NOT CMAKE_BUILD_TYPE)
+	message(STATUS "No build type selected.")
+	set(CMAKE_BUILD_TYPE "Release")
+endif()
+add_compile_definitions("CMAKE_BUILD_TYPE=\"${CMAKE_BUILD_TYPE}\"")
+string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE)
+message(STATUS "CMAKE_C_FLAGS_${BUILD_TYPE}: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${BUILD_TYPE}}")
+message(STATUS "CMAKE_CXX_FLAGS_${BUILD_TYPE}: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${BUILD_TYPE}}")
+
 set(ABSL_BUILD_TESTING OFF) # don't build/run abseil tests
+
+# UZDoom itself has no libs. Ensure bundled dependencies are statically linked.
+set( BUILD_SHARED_LIBS OFF CACHE INTERNAL "" FORCE )
 
 # make all targets use LTO - want to do this early in the cmake to ensure it applies to any targets
 option( FORCE_NO_LTO "Turn off LTO even if it would be possible to use it." NO )
@@ -53,6 +94,7 @@ find_package(Python3 3.6 REQUIRED)
 
 list( APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake )
 include( FindPackageHandleStandardArgs )
+include( CheckSourceCompiles )
 
 # Support cross compiling
 option( FORCE_CROSSCOMPILE "Turn on cross compiling." NO )
@@ -90,7 +132,12 @@ endfunction()
 
 option( PK3_QUIET_ZIPDIR "Do not list files processed by zipdir" NO )
 if( PK3_QUIET_ZIPDIR )
-	set( PK3_ZIPDIR_OPTIONS "-q" )
+	list( APPEND PK3_ZIPDIR_OPTIONS "-q" )
+endif()
+
+if( USED_FEATURES )
+	string( REPLACE ";" " " USED_FEATURES_STR "${USED_FEATURES}" )
+	list( APPEND PK3_ZIPDIR_OPTIONS "-f" "${USED_FEATURES_STR}" )
 endif()
 
 # Simplify pk3 building, add_pk3(filename srcdirectory [srcdirectory2 ...])
@@ -99,8 +146,14 @@ function( add_pk3 PK3_NAME )
 	string( REPLACE "." "_" PK3_TARGET ${PK3_NAME} )
 
 	add_custom_command( OUTPUT ${ZDOOM_OUTPUT_DIR}/${PK3_NAME}
-		COMMAND zipdir -udf ${PK3_ZIPDIR_OPTIONS} ${ZDOOM_OUTPUT_DIR}/${PK3_NAME} ${ARGN}
-		DEPENDS zipdir )
+		COMMAND Python3::Interpreter -B -E -s
+			${CMAKE_SOURCE_DIR}/tools/zipdir.py
+			-p "zs txt"
+			-dm ${CMAKE_BINARY_DIR}/gitinfo.h
+			${PK3_ZIPDIR_OPTIONS}
+			${ZDOOM_OUTPUT_DIR}/${PK3_NAME}
+			${ARGN}
+		DEPENDS ${CMAKE_SOURCE_DIR}/tools/zipdir.py ${CMAKE_BINARY_DIR}/gitinfo.h )
 
 	# Create a list of source files for this PK3, for use in the IDE
 	# Phase 1: Create a list of all source files for this PK3 archive, except
@@ -127,10 +180,8 @@ function( add_pk3 PK3_NAME )
 	endforeach()
 
 	# Phase 2: Create the PK3 build rule, including the source file list for the IDE
-	# Touch the zipdir executable here so that the pk3s are forced to
-	# rebuild each time since their dependency has "changed."
 	add_custom_target( ${PK3_TARGET} ALL
-		COMMAND ${CMAKE_COMMAND} -E touch $<TARGET_FILE:zipdir>
+		COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_SOURCE_DIR}/tools/zipdir.py
 		DEPENDS ${ZDOOM_OUTPUT_DIR}/${PK3_NAME}
 		SOURCES ${PK3_SRCS})
 
@@ -181,12 +232,6 @@ macro( make_release_only )
 	set( CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELEASE} )
 	string( REPLACE "/MT " "/MTd " CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_RELEASE} )
 endmacro()
-
-IF( NOT CMAKE_BUILD_TYPE )
-	SET( CMAKE_BUILD_TYPE Debug CACHE STRING
-		"Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
-		FORCE )
-ENDIF()
 
 set( ZDOOM_OUTPUT_DIR ${CMAKE_BINARY_DIR} CACHE PATH "Directory where zdoom.pk3 and the executable will be created." )
 set( ZDOOM_EXE_NAME "MAIM" CACHE FILEPATH "Name of the executable to create" )
@@ -252,6 +297,11 @@ option( NO_OPENAL "Disable OpenAL sound support" OFF )
 find_package( BZip2 )
 find_package( VPX )
 
+include( FindPkgConfig )
+if( PkgConfig_FOUND )
+	pkg_check_modules( WEBP IMPORTED_TARGET libwebpdecoder libwebpmux )
+endif()
+
 if (CURL_REQUIRED)
 	find_package( CURL )
 	if( MSVC AND NOT CURL_FOUND )
@@ -273,6 +323,9 @@ target_architecture(TARGET_ARCHITECTURE)
 
 if( ${TARGET_ARCHITECTURE} MATCHES "x86_64" )
 	set( HAVE_VM_JIT ON )
+	if( NOT MSVC )
+		add_compile_options(-msse3)
+	endif()
 endif()
 
 option (HAVE_VULKAN "Enable Vulkan support" ON)
@@ -285,7 +338,7 @@ option (HAVE_VULKAN "Enable Vulkan support" ON)
 if( MSVC )
 	# Eliminate unreferenced functions and data
 	# Perform identical COMDAT folding
-	set( REL_LINKER_FLAGS "/opt:ref /opt:icf /nodefaultlib:msvcrt /TSAWARE /LARGEADDRESSAWARE" )
+	set( REL_LINKER_FLAGS "/opt:ref /opt:icf /nodefaultlib:msvcrt /TSAWARE /LARGEADDRESSAWARE /DEBUG" )
 
 	# String pooling
 	# Function-level linking
@@ -322,11 +375,35 @@ if( MSVC )
 	endif()
 
 	string(REPLACE "/Ob1 " "/Ob2 " CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}" )
-	string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-	string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-	string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
-	string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+
+	if( CMAKE_CXX_COMPILER_LAUNCHER OR CMAKE_C_COMPILER_LAUNCHER )
+		# For some reason, these cause rebuild issues on some installs of msvc.
+		# These lines are required for ccache to work.
+		# There might be a better way to do this, but I cannot find one.
+		string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+		string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+		string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+		string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+	endif()
 else()
+	if(LINUX)
+		cmake_push_check_state()
+		set(CMAKE_REQUIRED_QUIET TRUE)
+		check_source_compiles(C [[
+				#include <features.h>
+				#if !defined(__GLIBC__) && !defined(__UCLIBC__) && !defined(__ANDROID__)
+					int main() { return 0; }
+				#endif
+			]] IS_MUSL)
+		cmake_pop_check_state()
+	endif()
+
+	if(IS_MUSL)
+		# band-aid fix for Alpine not liking FString
+		# TODO: actually fix this
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -U_FORTIFY_SOURCE")
+	endif()
+
 	set( REL_LINKER_FLAGS "" )
 	set( ALL_C_FLAGS "-ffp-contract=off" )
 
@@ -342,11 +419,10 @@ else()
 		include(CheckSymbolExists)
 		check_symbol_exists( "fts_set" "sys/types.h;sys/stat.h;fts.h" HAVE_FTS )
 		if ( NOT HAVE_FTS )
-			include ( FindPkgConfig )
 			pkg_check_modules( MUSL_FTS musl-fts )
 			if ( MUSL_FTS_FOUND )
 				list(JOIN MUSL_FTS_LDFLAGS " " MUSL_FTS_LDFLAGS_JOINED)
-				set ( ALL_C_FLAGS "${ALL_C_FLAGS} ${MUSL_FTS_LDFLAGS_JOINED}" )
+				set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MUSL_FTS_LDFLAGS_JOINED}")
 			else ( MUSL_FTS_FOUND )
 				message (ERROR "fts_* functions not found in the system" )
 			endif ( MUSL_FTS_FOUND )
@@ -359,7 +435,11 @@ else()
 	if( APPLE )
 		list(PREPEND CMAKE_PREFIX_PATH "/opt/local")    # port
 		list(PREPEND CMAKE_PREFIX_PATH "/opt/homebrew") # brew
-		set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
+		if(DEFINED XCODE_VERSION AND XCODE_VERSION VERSION_LESS 27.0)
+			set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13") # This is the actual minimum...
+		else()
+			set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0") # ...but XCode 27 has this as the minimum
+		endif()
 		if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
 			# If we're compiling with a custom GCC on the Mac (which we know since g++-4.2 doesn't support C++11) statically link libgcc.
 			set( ALL_C_FLAGS "-static-libgcc" )
@@ -378,17 +458,50 @@ set( CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBI
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ALL_C_FLAGS}" )
 set( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${REL_C_FLAGS}" )
 set( CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} ${REL_C_FLAGS}" )
-set( CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${REL_C_FLAGS}" )
+set( CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${REL_C_FLAGS}" ) # Adding -D_DEBUG makes compilation fail
 set( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${DEB_C_FLAGS} -D_DEBUG" )
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALL_C_FLAGS}" )
 set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${REL_C_FLAGS}" )
 set( CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} ${REL_C_FLAGS}" )
-set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${REL_C_FLAGS}" )
+set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${REL_C_FLAGS}" ) # Adding -D_DEBUG makes compilation fail
 set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${DEB_C_FLAGS} -D_DEBUG" )
 
 option(FORCE_INTERNAL_BZIP2 "Use internal bzip2")
 option(FORCE_INTERNAL_CPPDAP "Use internal cppdap" ON)
+option(FORCE_INTERNAL_WEBP "Use internal webp" ON)
+
+find_package(Git QUIET)
+if(HAS_FEATURES)
+	if (USED_FEATURES)
+		add_compile_definitions(${USED_FEATURES})
+		string( REPLACE ";" " " USED_FEATURES_STR "${USED_FEATURES}" )
+		add_compile_definitions(COMPILED_FEATURES="${USED_FEATURES_STR}")
+	endif()
+	message(STATUS "Features being tested:")
+	foreach(_feat ${ALL_FEATURES})
+		if(FEATURE_${_feat} OR TESTING_FEATURES)
+			message(STATUS "  ${_feat}: Yes")
+		else()
+			message(STATUS "  ${_feat}: No")
+		endif()
+	endforeach()
+elseif(GIT_FOUND)
+	execute_process(
+		COMMAND git grep -n " FEATURE_[^\$]" -- ":!*thirdparty*" ":!*libraries*"
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_GREP_OUT
+		OUTPUT_STRIP_TRAILING_WHITESPACE )
+
+	string(REPLACE "\n" ";" GIT_GREP_LINES "${GIT_GREP_OUT}")
+	foreach(_line ${GIT_GREP_LINES})
+		string(REPLACE ":" ";" _parts "${_line}")
+		list(GET _parts 0 _filepath)
+		if(NOT _filepath STREQUAL "CMakeLists.txt")
+			message(FATAL_ERROR "Unused feature: ${_line}")
+		endif()
+	endforeach()
+endif()
 
 if (HAVE_VULKAN)
 	add_subdirectory( libraries/ZVulkan )
@@ -401,8 +514,6 @@ add_subdirectory( libraries/abseil )
 
 set(ZWIDGET_BUILD_EXAMPLE OFF CACHE INTERNAL "" FORCE)
 add_subdirectory( libraries/ZWidget )
-
-add_subdirectory( libraries/webp )
 
 if( HAVE_VM_JIT AND UNIX )
 	check_symbol_exists( "backtrace" "execinfo.h" HAVE_BACKTRACE )
@@ -439,21 +550,33 @@ if ( CPPDAP_FOUND AND NOT FORCE_INTERNAL_CPPDAP )
 	message( STATUS "Using system cppdap library, includes found at ${CPPDAP_INCLUDE_DIR}" )
 else()
 	message( STATUS "Using internal cppdap library" )
-	add_subdirectory( libraries/cppdap )
+	add_subdirectory( libraries/cppdap EXCLUDE_FROM_ALL )
 	set( CPPDAP_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries/cppdap" )
 	set( CPPDAP_LIBRARIES cppdap )
 	set( CPPDAP_LIBRARY cppdap )
 	set( CPPDAP_FOUND TRUE )
 endif()
 
+if ( WEBP_FOUND AND NOT FORCE_INTERNAL_WEBP )
+	message( STATUS "Using system webp library, includes found at ${WEBP_libwebpdecoder_INCLUDEDIR}" )
+	set( WEBP_TARGET PkgConfig::WEBP )
+else()
+	message( STATUS "Using internal webp library" )
+	add_subdirectory( libraries/webp )
+	set( WEBP_TARGET webp )
+endif()
+
 # ZMUSIC
-set( BUILD_SHARED_LIBS OFF CACHE INTERNAL "" FORCE )
 add_subdirectory( libraries/ZMusic )
 set( ZMUSIC_ROOT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/zmusic" )
 set( ZMUSIC_INCLUDE_DIR ${ZMUSIC_ROOT_PATH}/include )
 set( ZMUSIC_LIBRARIES zmusic )
 
 set( LZMA_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries/lzma/C" )
+
+set( BOOST_PFR_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries/boost_pfr/include" )
+
+set( REFLECT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries/reflect" )
 
 if( NOT CMAKE_CROSSCOMPILING )
 	if( NOT CROSS_EXPORTS )
@@ -482,12 +605,6 @@ add_subdirectory( wadsrc )
 #add_subdirectory( wadsrc_lights )
 #add_subdirectory( wadsrc_extra )
 #add_subdirectory( wadsrc_widepix )
-
-if( ZMUSIC_SYSTEM_INSTALL )
-	# Internal ZMusic library provides miniz target, miniz.h file in partuclar
-	# It's not the case with system-wide ZMusic installation
-	add_subdirectory( libraries/miniz )
-endif()
 
 if( NOT CMAKE_CROSSCOMPILING )
 	export(TARGETS ${CROSS_EXPORTS} FILE "${CMAKE_BINARY_DIR}/ImportExecutables.cmake" )

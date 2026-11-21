@@ -107,10 +107,10 @@ DEFINE_ACTION_FUNCTION_NATIVE(DStatusBarCore, StatusbarToRealCoords, StatusbarTo
 	return min(4, numret);
 }
 
-void SBar_DrawTexture(DStatusBarCore* self, int texid, double x, double y, int flags, double alpha, double w, double h, double scaleX, double scaleY, int style, int color, int translation, double clipwidth)
+void SBar_DrawTexture(DStatusBarCore* self, int texid, double x, double y, int flags, double alpha, double w, double h, double scaleX, double scaleY, int style, int color, int translation, double clipwidth, double clipheight)
 {
 	if (!twod->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
-	self->DrawGraphic(FSetTextureID(texid), x, y, flags, alpha, w, h, scaleX, scaleY, ERenderStyle(style), color, translation, clipwidth);
+	self->DrawGraphic(FSetTextureID(texid), x, y, flags, alpha, w, h, scaleX, scaleY, ERenderStyle(style), color, translation, clipwidth, clipheight);
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DStatusBarCore, DrawTexture, SBar_DrawTexture)
@@ -129,14 +129,15 @@ DEFINE_ACTION_FUNCTION_NATIVE(DStatusBarCore, DrawTexture, SBar_DrawTexture)
 	PARAM_INT(col);
 	PARAM_INT(trans);
 	PARAM_FLOAT(clipwidth);
-	SBar_DrawTexture(self, texid, x, y, flags, alpha, w, h, scaleX, scaleY, style, col, trans, clipwidth);
+	PARAM_FLOAT(clipheight);
+	SBar_DrawTexture(self, texid, x, y, flags, alpha, w, h, scaleX, scaleY, style, col, trans, clipwidth, clipheight);
 	return 0;
 }
 
-void SBar_DrawImage(DStatusBarCore* self, const FString& texid, double x, double y, int flags, double alpha, double w, double h, double scaleX, double scaleY, int style, int color, int translation, double clipwidth)
+void SBar_DrawImage(DStatusBarCore* self, const FString& texid, double x, double y, int flags, double alpha, double w, double h, double scaleX, double scaleY, int style, int color, int translation, double clipwidth, double clipheight)
 {
 	if (!twod->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
-	self->DrawGraphic(TexMan.CheckForTexture(texid.GetChars(), ETextureType::Any), x, y, flags, alpha, w, h, scaleX, scaleY, ERenderStyle(style), color, translation, clipwidth);
+	self->DrawGraphic(TexMan.CheckForTexture(texid.GetChars(), ETextureType::Any), x, y, flags, alpha, w, h, scaleX, scaleY, ERenderStyle(style), color, translation, clipwidth, clipheight);
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DStatusBarCore, DrawImage, SBar_DrawImage)
@@ -155,7 +156,8 @@ DEFINE_ACTION_FUNCTION_NATIVE(DStatusBarCore, DrawImage, SBar_DrawImage)
 	PARAM_INT(col);
 	PARAM_INT(trans);
 	PARAM_FLOAT(clipwidth);
-	SBar_DrawImage(self, texid, x, y, flags, alpha, w, h, scaleX, scaleY, style, col, trans, clipwidth);
+	PARAM_FLOAT(clipheight);
+	SBar_DrawImage(self, texid, x, y, flags, alpha, w, h, scaleX, scaleY, style, col, trans, clipwidth, clipheight);
 	return 0;
 }
 
@@ -615,6 +617,66 @@ DEFINE_ACTION_FUNCTION_NATIVE(FFont, FindFont, FindFont)
 	ACTION_RETURN_POINTER(FFont::FindFont(name));
 }
 
+static FFont* GetSmallTextFont(FFont* fallbackIfNoUserChoice)
+{
+	return FFont::GetSmallTextFont(fallbackIfNoUserChoice);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetSmallTextFont, GetSmallTextFont)
+{
+	PARAM_PROLOGUE;
+	PARAM_POINTER(fallbackIfNoUserChoice, FFont);
+	ACTION_RETURN_POINTER(FFont::GetSmallTextFont(fallbackIfNoUserChoice));
+}
+
+static FFont *GetTitleFont(FFont *fallbackIfNoUserChoice)
+{
+	return FFont::GetTitleFont(fallbackIfNoUserChoice);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetTitleFont, GetTitleFont)
+{
+	PARAM_PROLOGUE;
+	PARAM_POINTER(fallbackIfNoUserChoice, FFont);
+	ACTION_RETURN_POINTER(FFont::GetTitleFont(fallbackIfNoUserChoice));
+}
+
+static FFont *GetDescriptionFont(FFont *fallbackIfNoUserChoice)
+{
+	return FFont::GetDescriptionFont(fallbackIfNoUserChoice);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetDescriptionFont, GetDescriptionFont)
+{
+	PARAM_PROLOGUE;
+	PARAM_POINTER(fallbackIfNoUserChoice, FFont);
+	ACTION_RETURN_POINTER(FFont::GetDescriptionFont(fallbackIfNoUserChoice));
+}
+
+static FFont *GetConsoleFont(FFont *fallbackIfNoUserChoice)
+{
+	return FFont::GetConsoleFont(fallbackIfNoUserChoice);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetConsoleFont, GetConsoleFont)
+{
+	PARAM_PROLOGUE;
+	PARAM_POINTER(fallbackIfNoUserChoice, FFont);
+	ACTION_RETURN_POINTER(FFont::GetConsoleFont(fallbackIfNoUserChoice));
+}
+
+static FFont *GetBigTextFont(FFont *fallbackIfNoUserChoice)
+{
+	return FFont::GetBigTextFont(fallbackIfNoUserChoice);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetBigTextFont, GetBigTextFont)
+{
+	PARAM_PROLOGUE;
+	PARAM_POINTER(fallbackIfNoUserChoice, FFont);
+	ACTION_RETURN_POINTER(FFont::GetBigTextFont(fallbackIfNoUserChoice));
+}
+
 static int GetCharWidth(FFont *font, int code)
 {
 	return font->GetCharWidth(code);
@@ -636,6 +698,17 @@ DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetHeight, GetHeight)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FFont);
 	ACTION_RETURN_INT(self->GetHeight());
+}
+
+static int IsValidDynamicFont(FFont *font)
+{
+	return font->IsValidDynamicFont();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, IsValidDynamicFont, IsValidDynamicFont)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	ACTION_RETURN_INT(self->IsValidDynamicFont());
 }
 
 static int GetDisplacement(FFont* font)
@@ -724,8 +797,16 @@ DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetCursor, GetCursor)
 
 static int GetGlyphHeight(FFont* fnt, int code)
 {
-	auto glyph = fnt->GetChar(code, CR_UNTRANSLATED, nullptr);
-	return glyph ? (int)glyph->GetDisplayHeight() : 0;
+	if (fnt->IsValidDynamicFont())
+	{
+		char32_t srcChar = code;
+		return fnt->GetDynamicFontAtlas()->GetGlyphs().GetGlyphByCodepoint(srcChar).height;
+	}
+	else
+	{
+		auto glyph = fnt->GetChar(code, CR_UNTRANSLATED, nullptr);
+		return glyph ? (int)glyph->GetDisplayHeight() : 0;
+	}
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetGlyphHeight, GetGlyphHeight)

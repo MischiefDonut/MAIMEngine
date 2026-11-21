@@ -36,6 +36,7 @@ class DynamicLight : Actor
 	flagdef spot: lightflags, 6;
 	flagdef dontlightothers: lightflags, 7;
 	flagdef dontlightmap: lightflags, 8;
+	flagdef trace: lightflags, 9;
 
 	enum EArgs
 	{
@@ -59,6 +60,7 @@ class DynamicLight : Actor
 		LF_SPOT = 64,
 		LF_DONTLIGHTOTHERS = 128,
 		LF_DONTLIGHTMAP = 256,
+		LF_TRACE = 512,
 	};
 
 	enum ELightType
@@ -498,4 +500,29 @@ class VavoomLightColor : VavoomLight
 		args[LIGHT_INTENSITY] = radius;
 		Super.BeginPlay();
 	}
+}
+
+//==========================================================================
+//
+// ZDRAY LIGHTMAP LIGHTS
+//
+//==========================================================================
+
+mixin class TraceLightDefaults
+{
+	Default
+	{
+		+DYNAMICLIGHT.TRACE
+		+DYNAMICLIGHT.DONTLIGHTMAP
+	}
+}
+
+class PointLightTraceAttenuated : PointLightAttenuated
+{
+	mixin TraceLightDefaults;
+}
+
+class SpotLightTraceAttenuated : SpotLightAttenuated
+{
+	mixin TraceLightDefaults;
 }

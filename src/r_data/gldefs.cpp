@@ -183,6 +183,7 @@ static const char *LightTags[]=
    "dontlightothers",
    "dontlightmap",
    "intensity",
+   "trace",
    nullptr
 };
 
@@ -210,6 +211,7 @@ enum {
    LIGHTTAG_DONTLIGHTOTHERS,
    LIGHTTAG_DONTLIGHTMAP,
    LIGHTTAG_INTENSITY,
+   LIGHTTAG_TRACE,
 };
 
 //==========================================================================
@@ -516,6 +518,9 @@ class GLDefsParser
 				case LIGHTTAG_DONTLIGHTMAP:
 					defaults->SetDontLightMap(ParseInt(sc) != 0);
 					break;
+				case LIGHTTAG_TRACE:
+					defaults->SetTrace(ParseInt(sc) != 0);
+					break;
 				case LIGHTTAG_SPOT:
 					{
 						float innerAngle = ParseFloat(sc);
@@ -620,6 +625,9 @@ class GLDefsParser
 					break;
 				case LIGHTTAG_DONTLIGHTMAP:
 					defaults->SetDontLightMap(ParseInt(sc) != 0);
+					break;
+				case LIGHTTAG_TRACE:
+					defaults->SetTrace(ParseInt(sc) != 0);
 					break;
 				case LIGHTTAG_SPOT:
 					{
@@ -729,6 +737,9 @@ class GLDefsParser
 				case LIGHTTAG_DONTLIGHTMAP:
 					defaults->SetDontLightMap(ParseInt(sc) != 0);
 					break;
+				case LIGHTTAG_TRACE:
+					defaults->SetTrace(ParseInt(sc) != 0);
+					break;
 				case LIGHTTAG_SPOT:
 					{
 						float innerAngle = ParseFloat(sc);
@@ -836,6 +847,9 @@ class GLDefsParser
 				case LIGHTTAG_DONTLIGHTMAP:
 					defaults->SetDontLightMap(ParseInt(sc) != 0);
 					break;
+				case LIGHTTAG_TRACE:
+					defaults->SetTrace(ParseInt(sc) != 0);
+					break;
 				case LIGHTTAG_SPOT:
 					{
 						float innerAngle = ParseFloat(sc);
@@ -939,6 +953,9 @@ class GLDefsParser
 					break;
 				case LIGHTTAG_DONTLIGHTMAP:
 					defaults->SetDontLightMap(ParseInt(sc) != 0);
+					break;
+				case LIGHTTAG_TRACE:
+					defaults->SetTrace(ParseInt(sc) != 0);
 					break;
 				case LIGHTTAG_SPOT:
 					{
@@ -1518,6 +1535,20 @@ class GLDefsParser
 
 		if (usershader.shader.IsNotEmpty())
 		{
+			int lump = fileSystem.CheckNumForFullName(usershader.shader.GetChars());
+			if (lump == -1)
+			{
+				if(gl_strict_gldefs_errors)
+				{
+					sc.ScriptError("inexistent shader lump '%s' in %s", usershader.shader.GetChars(), currentName.GetChars());
+				}
+				else
+				{
+					sc.ScriptMessage("inexistent shader lump '%s' in %s", usershader.shader.GetChars(), currentName.GetChars());
+				}
+				return;
+			}
+
 			int firstUserTexture;
 			if ((mlay.Normal || tex->GetNormalmap()) && (mlay.Specular || tex->GetSpecularmap()))
 			{
@@ -1837,6 +1868,7 @@ class GLDefsParser
 			int maplump = -1;
 			UserShaderDesc desc;
 			desc.shaderType = SHADER_Default;
+			desc.shaderFlags = SFlag_LegacyShader;
 			TArray<FString> texNameList;
 			TArray<int> texNameIndex;
 			float speed = 1.f;
@@ -1868,7 +1900,6 @@ class GLDefsParser
 						if (sc.Compare(typeName[i]))
 						{
 							desc.shaderType = typeIndex[i];
-							if (usesBrightmap[i]) desc.shaderFlags |= SFlag_Brightmap;
 							found = true;
 							break;
 						}

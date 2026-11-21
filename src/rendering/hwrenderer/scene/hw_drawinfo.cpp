@@ -35,12 +35,13 @@
 #include "hw_vrmodes.h"
 #include "hw_clipper.h"
 #include "v_draw.h"
-#include "a_corona.h"
 #include "texturemanager.h"
 #include "actorinlines.h"
 #include "g_levellocals.h"
 
 EXTERN_CVAR(Float, r_visibility)
+EXTERN_CVAR(Int, r_distance_cull_type)
+EXTERN_CVAR(Float, r_line_distance_cull)
 CVAR(Bool, gl_bandedswlight, false, CVAR_ARCHIVE)
 CVAR(Bool, gl_sort_textures, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool, gl_no_skyclear, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -51,6 +52,7 @@ CVAR(Float, gl_mask_threshold, 0.5f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float, gl_mask_sprite_threshold, 0.5f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 CVAR(Bool, gl_coronas, true, CVAR_ARCHIVE);
+extern TArray<AActor*> Coronas;
 
 sector_t * hw_FakeFlat(sector_t * sec, sector_t * dest, area_t in_area, bool back);
 
@@ -148,9 +150,9 @@ void HWDrawInfo::StartScene(FRenderViewpoint &parentvp, HWViewpointUniforms *uni
 	}
 	else
 	{
-		VPUniforms.mProjectionMatrix.loadIdentity();
-		VPUniforms.mViewMatrix.loadIdentity();
-		VPUniforms.mNormalViewMatrix.loadIdentity();
+		VPUniforms.ProjectionMatrix.loadIdentity();
+		VPUniforms.ViewMatrix.loadIdentity();
+		VPUniforms.NormalViewMatrix.loadIdentity();
 		ProjectionMatrix2.loadIdentity();
 		VPUniforms.mViewHeight = viewheight;
 		int fogmode = Viewpoint.bDoOrtho && (lightmode == ELightMode::ZDoomSoftware) ? 2 : gl_fogmode; // Force radial if Ortho and ZDoomSoftware
@@ -167,8 +169,20 @@ void HWDrawInfo::StartScene(FRenderViewpoint &parentvp, HWViewpointUniforms *uni
 		VPUniforms.mClipLine.X = -10000000.0f;
 		VPUniforms.mShadowmapFilter = gl_shadowmap_filter;
 		VPUniforms.mLightBlendMode = (level.info ? (int)level.info->lightblendmode : 0);
-		VPUniforms.mThickFogDistance = Level->thickfogdistance;
-		VPUniforms.mThickFogMultiplier = Level->thickfogmultiplier;
+		if (r_distance_cull_type > 1)
+		{
+			double rel = (0.5*sqrt(Viewpoint.culldistsq)/VPUniforms.mThickFogDistance) - 1.0;
+			VPUniforms.mThickFogDistance += (fabs(rel) > 0.25 ? 0.1 : 0.01)*(0.5*sqrt(Viewpoint.culldistsq) - VPUniforms.mThickFogDistance);
+			if (Level->thickfogdistance > 0.0 && VPUniforms.mThickFogDistance > Level->thickfogdistance)
+			{
+				VPUniforms.mThickFogDistance = Level->thickfogdistance; // Respect intended artistic vision of mapper if possible
+			}
+		}
+		else
+		{
+			VPUniforms.mThickFogDistance = Level->thickfogdistance;
+		}
+		VPUniforms.mThickFogMultiplier =  (r_distance_cull_type > 1 ? 30.0 : Level->thickfogmultiplier);
 	}
 	mClipper->SetViewpoint(Viewpoint);
 	vClipper->SetViewpoint(Viewpoint);
@@ -178,7 +192,6 @@ void HWDrawInfo::StartScene(FRenderViewpoint &parentvp, HWViewpointUniforms *uni
 
 	for (int i = 0; i < GLDL_TYPES; i++) drawlists[i].Reset();
 	hudsprites.Clear();
-//	Coronas.Clear();
 	vpIndex = 0;
 
 	// Fullbright information needs to be propagated from the main view.
@@ -407,12 +420,12 @@ void HWDrawInfo::SetViewMatrix(const FRotator &angles, float vx, float vy, float
 	float mult = mirror ? -1.f : 1.f;
 	float planemult = planemirror ? -Level->info->pixelstretch : Level->info->pixelstretch;
 
-	VPUniforms.mViewMatrix.loadIdentity();
-	VPUniforms.mViewMatrix.rotate(angles.Roll.Degrees(), 0.0f, 0.0f, 1.0f);
-	VPUniforms.mViewMatrix.rotate(angles.Pitch.Degrees(), 1.0f, 0.0f, 0.0f);
-	VPUniforms.mViewMatrix.rotate(angles.Yaw.Degrees(), 0.0f, mult, 0.0f);
-	VPUniforms.mViewMatrix.translate(vx * mult, -vz * planemult, -vy);
-	VPUniforms.mViewMatrix.scale(-mult, planemult, 1);
+	VPUniforms.ViewMatrix.loadIdentity();
+	VPUniforms.ViewMatrix.rotate(angles.Roll.Degrees(), 0.0f, 0.0f, 1.0f);
+	VPUniforms.ViewMatrix.rotate(angles.Pitch.Degrees(), 1.0f, 0.0f, 0.0f);
+	VPUniforms.ViewMatrix.rotate(angles.Yaw.Degrees(), 0.0f, mult, 0.0f);
+	VPUniforms.ViewMatrix.translate(vx * mult, -vz * planemult, -vy);
+	VPUniforms.ViewMatrix.scale(-mult, planemult, 1);
 }
 
 
@@ -624,9 +637,8 @@ void HWDrawInfo::RenderPortal(HWPortal *p, FRenderState &state, bool usestencil)
 
 }
 
-void HWDrawInfo::DrawCorona(FRenderState& state, ACorona* corona, double dist)
+void HWDrawInfo::DrawCorona(FRenderState& state, AActor* corona, float coronaFade, const DVector3& pos, double dist)
 {
-#if 0
 	spriteframe_t* sprframe = &SpriteFrames[sprites[corona->sprite].spriteframes + (size_t)corona->SpawnState->GetFrame()];
 	FTextureID patch = sprframe->Texture[0];
 	if (!patch.isValid()) return;
@@ -634,10 +646,10 @@ void HWDrawInfo::DrawCorona(FRenderState& state, ACorona* corona, double dist)
 	if (!tex || !tex->isValid()) return;
 
 	// Project the corona sprite center
-	FVector4 worldPos((float)corona->X(), (float)corona->Z(), (float)corona->Y(), 1.0f);
+	FVector4 worldPos((float)pos.X, (float)pos.Z, (float)pos.Y, 1.0f);
 	FVector4 viewPos, clipPos;
-	VPUniforms.mViewMatrix.multMatrixPoint(&worldPos[0], &viewPos[0]);
-	VPUniforms.mProjectionMatrix.multMatrixPoint(&viewPos[0], &clipPos[0]);
+	VPUniforms.ViewMatrix.multMatrixPoint(&worldPos[0], &viewPos[0]);
+	VPUniforms.ProjectionMatrix.multMatrixPoint(&viewPos[0], &clipPos[0]);
 	if (clipPos.W < -1.0f) return; // clip z nearest
 	float halfViewportWidth = screen->GetWidth() * 0.5f;
 	float halfViewportHeight = screen->GetHeight() * 0.5f;
@@ -645,7 +657,7 @@ void HWDrawInfo::DrawCorona(FRenderState& state, ACorona* corona, double dist)
 	float screenX = halfViewportWidth + clipPos.X * invW * halfViewportWidth;
 	float screenY = halfViewportHeight - clipPos.Y * invW * halfViewportHeight;
 
-	float alpha = corona->CoronaFade * float(corona->Alpha);
+	float alpha = coronaFade * float(corona->Alpha);
 
 	// distance-based fade - looks better IMO
 	float distNearFadeStart = float(corona->RenderRadius()) * 0.1f;
@@ -660,14 +672,18 @@ void HWDrawInfo::DrawCorona(FRenderState& state, ACorona* corona, double dist)
 	alpha *= distFade;
 
 	state.SetColorAlpha(0xffffff, alpha, 0);
-	if (isSoftwareLighting()) state.SetSoftLightLevel(255);
+	if (isSoftwareLighting(lightmode)) state.SetSoftLightLevel(255);
 	else state.SetNoSoftLightLevel();
 
 	state.SetLightIndex(-1);
 	state.SetRenderStyle(corona->RenderStyle);
+	state.SetTextureMode(TM_NORMAL); // This is needed because the next line doesn't always set the mode...
 	state.SetTextureMode(corona->RenderStyle);
 
-	state.SetMaterial(tex, UF_Sprite, CTF_Expand, CLAMP_XY_NOMIP, 0, 0);
+	// no need for alpha test, coronas are meant to be translucent
+	state.AlphaFunc(Alpha_GEqual, 0.f);
+
+	state.SetMaterial(tex, UF_Sprite, CTF_Expand, CLAMP_XY_NOMIP, 0, 0, nullptr);
 
 	float scale = screen->GetHeight() / 1000.0f;
 	float tileWidth = corona->Scale.X * tex->GetDisplayWidth() * scale;
@@ -688,7 +704,6 @@ void HWDrawInfo::DrawCorona(FRenderState& state, ACorona* corona, double dist)
 	vp[3].Set(x1, y1, 1.0f, u1, v1);
 
 	state.Draw(DT_TriangleStrip, vertexindex, 4);
-#endif
 }
 
 //==========================================================================
@@ -857,18 +872,18 @@ void HWDrawInfo::DrawCoronas(FRenderState& state)
 	state.SetDepthMask(false);
 
 	HWViewpointUniforms vp = VPUniforms;
-	vp.mViewMatrix.loadIdentity();
-	vp.mProjectionMatrix = VRMode::GetVRMode(true)->GetHUDSpriteProjection();
+	vp.ViewMatrix.loadIdentity();
+	vp.ProjectionMatrix = VRMode::GetVRMode(true)->GetHUDSpriteProjection();
 	screen->mViewpoints->SetViewpoint(state, &vp);
 
 	float timeElapsed = (screen->FrameTime - LastFrameTime) / 1000.0f;
 	LastFrameTime = screen->FrameTime;
 
-#if 0
-	for (ACorona* corona : Coronas)
+	for (AActor* corona : Coronas)
 	{
-		auto cPos = corona->Vec3Offset(0., 0., corona->Height * 0.5);
-		DVector3 direction = Viewpoint.Pos - cPos;
+		auto& coronaFade = corona->specialf1;
+		DVector3 realPos = corona->PosRelative(Viewpoint.sector);
+		DVector3 direction = Viewpoint.Pos - realPos;
 		double dist = direction.Length();
 
 		// skip coronas that are too far
@@ -879,19 +894,18 @@ void HWDrawInfo::DrawCoronas(FRenderState& state)
 
 		direction.MakeUnit();
 		FTraceResults results;
-		if (!Trace(cPos, corona->Sector, direction, dist, MF_SOLID, ML_BLOCKEVERYTHING, corona, results, 0, CheckForViewpointActor, &Viewpoint))
+		if (!Trace(corona->Pos(), corona->Sector, direction, dist, MF_SOLID, ML_BLOCKEVERYTHING, corona, results, 0, CheckForViewpointActor, &Viewpoint))
 		{
-			corona->CoronaFade = std::min(corona->CoronaFade + timeElapsed * fadeSpeed, 1.0f);
+			coronaFade = std::min(coronaFade + timeElapsed * fadeSpeed, 1.0);
 		}
 		else
 		{
-			corona->CoronaFade = std::max(corona->CoronaFade - timeElapsed * fadeSpeed, 0.0f);
+			coronaFade = std::max(coronaFade - timeElapsed * fadeSpeed, 0.0);
 		}
 
-		if (corona->CoronaFade > 0.0f)
-			DrawCorona(state, corona, dist);
+		if (coronaFade > 0.0f)
+			DrawCorona(state, corona, (float)coronaFade, realPos, dist);
 	}
-#endif
 
 	state.SetTextureMode(TM_NORMAL);
 	screen->mViewpoints->Bind(state, vpIndex);
@@ -911,10 +925,10 @@ void HWDrawInfo::EndDrawScene(sector_t * viewsector, FRenderState &state)
 {
 	state.EnableFog(false);
 
-	/*if (gl_coronas && Coronas.Size() > 0)
+	if (gl_coronas && Coronas.Size() > 0)
 	{
 		DrawCoronas(state);
-	}*/
+	}
 
 	// [BB] HUD models need to be rendered here.
 	const bool renderHUDModel = IsHUDModelForPlayerAvailable(players[consoleplayer].camera->player);
@@ -943,8 +957,8 @@ void HWDrawInfo::DrawEndScene2D(sector_t * viewsector, FRenderState &state)
 	auto vrmode = VRMode::GetVRMode(true);
 
 	HWViewpointUniforms vp = VPUniforms;
-	vp.mViewMatrix.loadIdentity();
-	vp.mProjectionMatrix = vrmode->GetHUDSpriteProjection();
+	vp.ViewMatrix.loadIdentity();
+	vp.ProjectionMatrix = vrmode->GetHUDSpriteProjection();
 	screen->mViewpoints->SetViewpoint(state, &vp);
 	state.EnableDepthTest(false);
 	state.EnableMultisampling(false);
@@ -1037,7 +1051,7 @@ void HWDrawInfo::DrawScene(int drawmode)
 
 	if (applySSAO && RenderState.GetPassType() == GBUFFER_PASS)
 	{
-		screen->AmbientOccludeScene(VPUniforms.mProjectionMatrix.get()[5]);
+		screen->AmbientOccludeScene(VPUniforms.ProjectionMatrix.get()[5]);
 		screen->mViewpoints->Bind(RenderState, vpIndex);
 	}
 

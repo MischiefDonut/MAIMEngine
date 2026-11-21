@@ -210,9 +210,9 @@ bool FGLRenderState::ApplyShader()
 
 	if (mHwUniforms)
 	{
-		activeShader->cur->muProjectionMatrix.Set(&mHwUniforms->mProjectionMatrix);
-		activeShader->cur->muViewMatrix.Set(&mHwUniforms->mViewMatrix);
-		activeShader->cur->muNormalViewMatrix.Set(&mHwUniforms->mNormalViewMatrix);
+		activeShader->cur->muProjectionMatrix.Set(&mHwUniforms->ProjectionMatrix);
+		activeShader->cur->muViewMatrix.Set(&mHwUniforms->ViewMatrix);
+		activeShader->cur->muNormalViewMatrix.Set(&mHwUniforms->NormalViewMatrix);
 		activeShader->cur->muCameraPos.Set(&mHwUniforms->mCameraPos.X);
 		activeShader->cur->muClipLine.Set(&mHwUniforms->mClipLine.X);
 		activeShader->cur->muGlobVis.Set(mHwUniforms->mGlobVis);
@@ -235,6 +235,7 @@ bool FGLRenderState::ApplyShader()
 	activeShader->cur->muFogColor.Set(mStreamData.uFogColor);
 	activeShader->cur->muObjectColor.Set(mStreamData.uObjectColor);
 	activeShader->cur->muDynLightColor.Set(&mStreamData.uDynLightColor.X);
+	activeShader->cur->muLightProbeColor.Set(&mStreamData.uLightProbeColor.X);
 	activeShader->cur->muInterpolationFactor.Set(mStreamData.uInterpolationFactor);
 	activeShader->cur->muTimer.Set((double)(screen->FrameTime - firstFrame) * (double)mShaderTimer / 1000.);
 	activeShader->cur->muAlphaThreshold.Set(mAlphaThreshold);

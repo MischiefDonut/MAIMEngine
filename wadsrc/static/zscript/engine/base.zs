@@ -226,7 +226,9 @@ struct _ native unsafe(internal)	// These are the global variables, the struct i
 	native readonly Font smallfont;
 	native readonly Font smallfont2;
 	native readonly Font bigfont;
+	native readonly Font BigUpper;
 	native readonly Font confont;
+	native readonly Font SymbolsFont;
 	native readonly Font NewConsoleFont;
 	native readonly Font NewSmallFont;
 	native readonly Font AlternativeSmallFont;
@@ -694,10 +696,17 @@ struct Font native
 	native double GetDisplayTopOffset(int code);
 	native static Font FindFont(Name fontname);
 	native static Font GetFont(Name fontname);
+	native int IsValidDynamicFont();
 	native BrokenLines BreakLines(String text, int maxlen);
 	native int GetGlyphHeight(int code);
 	native int GetDefaultKerning();
 	native TextureID, int GetChar(int c);
+
+	native static Font GetSmallTextFont(Font fallbackIfNoUserChoice);
+	native static Font GetTitleFont(Font fallbackIfNoUserChoice);
+	native static Font GetDescriptionFont(Font fallbackIfNoUserChoice);
+	native static Font GetConsoleFont(Font fallbackIfNoUserChoice);
+	native static Font GetBigTextFont(Font fallbackIfNoUserChoice);
 }
 
 struct Console native
@@ -882,6 +891,7 @@ class BrokenLines : Object native version("2.4")
 struct StringTable native
 {
 	native static String Localize(String val, bool prefixed = true);
+	native static String GetUnlocalizedString(String val, bool prefixed = true);
 }
 
 struct Wads	// todo: make FileSystem an alias to 'Wads'

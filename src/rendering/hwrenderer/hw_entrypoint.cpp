@@ -46,6 +46,7 @@ EXTERN_CVAR(Bool, cl_capfps)
 extern bool NoInterpolateView;
 
 static SWSceneDrawer *swdrawer;
+TArray<AActor*> Coronas;
 
 void CleanSWDrawer()
 {
@@ -66,7 +67,7 @@ void CollectLights(FLevelLocals* Level)
 	for (auto light = Level->lights; light; light = light->next)
 	{
 		IShadowMap::LightsProcessed++;
-		if (light->shadowmapped && light->IsActive() && lightindex < 1024)
+		if (light->IsShadowMapped() && light->IsActive() && lightindex < 1024)
 		{
 			IShadowMap::LightsShadowmapped++;
 
@@ -156,7 +157,7 @@ sector_t* RenderViewpoint(FRenderViewpoint& mainvp, AActor* camera, IntRect* bou
 		float inv_iso_dist = 1.0f;
 		bool iso_ortho = (camera->ViewPos != NULL) && (camera->ViewPos->Flags & VPSF_ORTHOGRAPHIC);
 		if (iso_ortho && (camera->ViewPos->Offset.Length() > 0)) inv_iso_dist = 1.0/camera->ViewPos->Offset.Length();
-		di->VPUniforms.mProjectionMatrix = eye.GetProjection(fov, ratio, fovratio * inv_iso_dist, iso_ortho);
+		di->VPUniforms.ProjectionMatrix = eye.GetProjection(fov, ratio, fovratio * inv_iso_dist, iso_ortho);
 		di->ProjectionMatrix2 = eye.GetProjection(fov, ratio, fovratio, false); // Regular ol' perspective projection matrix
 
 		// Stereo mode specific viewpoint adjustment
@@ -310,6 +311,7 @@ static void CheckTimer(FRenderState &state, uint64_t ShaderStartTime)
 
 sector_t* RenderView(player_t* player)
 {
+	Coronas.Clear();
 	auto RenderState = screen->RenderState();
 	RenderState->SetVertexBuffer(screen->mVertexData);
 	screen->mVertexData->Reset();

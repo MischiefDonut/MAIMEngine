@@ -26,6 +26,7 @@
 struct FColormap;
 class IVertexBuffer;
 class IIndexBuffer;
+class PClass;
 
 enum EClearTarget
 {
@@ -192,6 +193,7 @@ struct StreamData
 	FVector4PalEntry uObjectColor;
 	FVector4PalEntry uObjectColor2;
 	FVector4 uDynLightColor;
+	FVector4 uLightProbeColor;
 	FVector4PalEntry uAddColor;
 	FVector4PalEntry uTextureAddColor;
 	FVector4PalEntry uTextureModulateColor;
@@ -319,6 +321,7 @@ public:
 		mStreamData.uSplitTopPlane = { 0.0f, 0.0f, 0.0f, 0.0f };
 		mStreamData.uSplitBottomPlane = { 0.0f, 0.0f, 0.0f, 0.0f };
 		mStreamData.uDynLightColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		mStreamData.uLightProbeColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 		mStreamData.uDetailParms = { 0.0f, 0.0f, 0.0f, 0.0f };
 #ifdef NPOT_EMULATION
 		mStreamData.uNpotEmulation = { 0,0,0,0 };
@@ -506,6 +509,13 @@ public:
 		mStreamData.uDynLightColor.Z = b;
 	}
 
+	void SetLightProbe(float r, float g, float b)
+	{
+		mStreamData.uLightProbeColor.X = r;
+		mStreamData.uLightProbeColor.Y = g;
+		mStreamData.uLightProbeColor.Z = b;
+	}
+
 	void SetScreenFade(float f)
 	{
 		// This component is otherwise unused.
@@ -626,7 +636,7 @@ public:
 	}
 
 private:
-	void SetMaterial(FMaterial *mat, int clampmode, int translation, int overrideshader)
+	void SetMaterial(FMaterial *mat, int clampmode, int translation, int overrideshader, PClass * cls)
 	{
 		mMaterial.mMaterial = mat;
 		mMaterial.mClampMode = clampmode;
@@ -639,7 +649,7 @@ private:
 	}
 
 public:
-	void SetMaterial(FGameTexture* tex, EUpscaleFlags upscalemask, int scaleflags, int clampmode, int translation, int overrideshader)
+	void SetMaterial(FGameTexture* tex, EUpscaleFlags upscalemask, int scaleflags, int clampmode, int translation, int overrideshader, PClass *cls)
 	{
 		tex->setSeen();
 		if (!sysCallbacks.PreBindTexture || !sysCallbacks.PreBindTexture(this, tex, upscalemask, scaleflags, clampmode, translation, overrideshader))
@@ -648,12 +658,12 @@ public:
 		}
 		auto mat = FMaterial::ValidateTexture(tex, scaleflags);
 		assert(mat);
-		SetMaterial(mat, clampmode, translation, overrideshader);
+		SetMaterial(mat, clampmode, translation, overrideshader, cls);
 	}
 
-	void SetMaterial(FGameTexture* tex, EUpscaleFlags upscalemask, int scaleflags, int clampmode, FTranslationID translation, int overrideshader)
+	void SetMaterial(FGameTexture* tex, EUpscaleFlags upscalemask, int scaleflags, int clampmode, FTranslationID translation, int overrideshader, PClass *cls)
 	{
-		SetMaterial(tex, upscalemask, scaleflags, clampmode, translation.index(), overrideshader);
+		SetMaterial(tex, upscalemask, scaleflags, clampmode, translation.index(), overrideshader, cls);
 	}
 
 

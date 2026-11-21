@@ -2609,6 +2609,12 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 
 		ptry = start + move * step / steps;
 
+		// Before we only updated walkplane if we were blocked.
+		// This can cause objects to downwarp infinitely far to the
+		// sector's floor if you are moving too fast. So, make sure
+		// that it is up-to-date for every step.
+		walkplane = P_CheckSlopeWalk(mo, onestep);
+
 		DVector2 startvel = mo->Vel.XY();
 
 		// killough 3/15/98: Allow objects to drop off
@@ -4362,7 +4368,7 @@ void AActor::CalcBones(bool recalc)
 		bool is_decoupled = flags9 & MF9_DECOUPLEDANIMATIONS;
 		double tic = GetModelTimer() + 1;
 
-		CalcModelFrameInfo frameinfo = CalcModelFrame(Level, smf, state, tics, modelData, this, is_decoupled, tic, 1.0);
+		CalcModelFrameInfo frameinfo = CalcModelFrame(Level, smf, state, tics, modelData, this, is_decoupled, tic, 1.0, nullptr);
 
 		ModelDrawInfo drawinfo;
 
@@ -4373,7 +4379,7 @@ void AActor::CalcBones(bool recalc)
 
 		for (unsigned i = 0; i < frameinfo.modelsamount; i++)
 		{
-			if (CalcModelOverrides(i, smf, modelData, frameinfo, drawinfo, is_decoupled))
+			if (CalcModelOverrides(i, smf, modelData, frameinfo, drawinfo, is_decoupled, nullptr))
 			{
 				if(!evaluatedSingle)
 				{ // [Jay] TODO per-model decoupled animations
@@ -5789,7 +5795,7 @@ void AActor::HandleSpawnFlags ()
 		{
 			Level->total_monsters--;
 		}
-		
+
 		flags |= MF_FRIENDLY;
 		flags &= ~MF_COUNTKILL;
 	}
@@ -5818,9 +5824,9 @@ void AActor::HandleSpawnFlags ()
 		{
 			Level->total_monsters--;
 		}
-		
+
 		flags &= ~MF_COUNTKILL;
-		
+
 		if (flags & MF_COUNTITEM)
 		{
 			flags &= ~MF_COUNTITEM;

@@ -366,9 +366,11 @@ void OpenGLFrameBuffer::InitLightmap(int LMTextureSize, int LMTextureCount, TArr
 		glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGB16F, LMTextureSize, LMTextureSize, LMTextureCount, 0, GL_RGB, GL_HALF_FLOAT, &LMTextureData[0]);
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 
 		glActiveTexture(activeTex);
+
+		GLRenderer->mLightMapWidth = LMTextureSize;
+		GLRenderer->mLightMapHeight = LMTextureSize;
 
 		LMTextureData.Reset(); // We no longer need this, release the memory
 	}
@@ -600,5 +602,8 @@ FTexture *OpenGLFrameBuffer::WipeEndScreen()
 	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, viewport.left, viewport.top, viewport.width, viewport.height);
 	return tex;
 }
+
+bool OpenGLFrameBuffer::HasNVidiaVRAMExt() { return gl.flags & RFL_NV_MEM; }
+bool OpenGLFrameBuffer::HasATIVRAMExt() { return gl.flags & RFL_ATI_MEM; }
 
 }

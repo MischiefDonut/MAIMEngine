@@ -26,26 +26,26 @@
 
 /** Lots of different version numbers **/
 
-#define VERSIONSTR "5.0.1"
+#define VERSIONSTR "5.1.0-pre"
 
 // The version as seen in the Windows resource
-#define RC_FILEVERSION 5,0,1,0
-#define RC_PRODUCTVERSION 5,0,1,0
+#define RC_FILEVERSION 5,0,9999,0
+#define RC_PRODUCTVERSION 5,0,9999,0
 #define RC_PRODUCTVERSION2 VERSIONSTR
 // These are for content versioning.
 #define VER_MAJOR 5
-#define VER_MINOR 0
-#define VER_REVISION 1
+#define VER_MINOR 1
+#define VER_REVISION 3
 
 // This should always refer to the UZDoom version a derived port is based on and not reflect the derived port's version number!
 #define ENG_MAJOR 5
-#define ENG_MINOR 0
-#define ENG_REVISION 1
+#define ENG_MINOR 1
+#define ENG_REVISION 3
 
 // Version stored in the ini's [LastRun] section.
 // Bump it if you made some configuration change that you want to
 // be able to migrate in FGameConfigFile::DoGlobalSetup().
-#define ENGINELASTRUNVERSION "233"
+#define ENGINELASTRUNVERSION "234"
 #define GAMELASTRUNVERSION "1"
 
 // Protocol version used in demos.
@@ -85,8 +85,6 @@
 #define BASEWAD "engine.pk3"
 // Set OPTIONALWAD to "" (null) to disable searching for it
 #define OPTIONALWAD ""
-#define GZDOOM 1
-#define VR3D_ENABLED
 
 // More stuff that needs to be different for derivatives.
 #define GAMENAME "MAIM"
@@ -120,6 +118,8 @@ const char *GetGitHash();
 const char *GetGitTime();
 const char *GetGitTag();
 int GetGitDistance();
+
+#define LIGHTMAP_VERSION 0xD15D4190 // LIGHTMAP lump version
 
 // [DISDAIN]
 #define DISDAINVERSION "2"

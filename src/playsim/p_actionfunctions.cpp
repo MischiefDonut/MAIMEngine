@@ -57,6 +57,7 @@
 #include "shadowinlines.h"
 #include "i_time.h"
 #include "vm.h"
+#include "p_visualthinker.h"
 
 static FRandom pr_camissile ("CustomActorfire");
 static FRandom pr_cabullet ("CustomBullet");
@@ -5763,10 +5764,13 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, GetBoneCount, GetBoneCountNative)
 //
 //================================================
 
+FModel * FindFModel(AActor * self);
+
 static int GetAnimStartFrameNative(AActor * self, int  animName_i)
 {
 	FName anim_name {ENamedName(animName_i)};
-	FModel * mdl = SetGetBoneShared<false, false>(self, 0);
+	FModel * mdl = FindFModel(self);
+	if(!mdl) return -1;
 	return mdl->FindFirstFrame(anim_name);
 }
 
@@ -5781,7 +5785,8 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, GetAnimStartFrame, GetAnimStartFrameNative
 static int GetAnimEndFrameNative(AActor * self, int  animName_i)
 {
 	FName anim_name {ENamedName(animName_i)};
-	FModel * mdl = SetGetBoneShared<false, false>(self, 0);
+	FModel * mdl = FindFModel(self);
+	if(!mdl) return -1;
 	return mdl->FindLastFrame(anim_name);
 }
 
@@ -5796,7 +5801,8 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, GetAnimEndFrame, GetAnimEndFrameNative)
 static double GetAnimFramerateNative(AActor * self, int  animName_i)
 {
 	FName anim_name {ENamedName(animName_i)};
-	FModel * mdl = SetGetBoneShared<false, false>(self, 0);
+	FModel * mdl = FindFModel(self);
+	if(!mdl) return -1;
 	return mdl->FindFramerate(anim_name);
 }
 
@@ -5814,14 +5820,24 @@ DEFINE_ACTION_FUNCTION(AActor, GetBoneFramePose)
 	PARAM_INT(bone_index);
 	PARAM_INT(frame_index);
 
-	FModel * mdl = GetBoneShared(self, 0, bone_index, nullptr);
+	FModel * mdl = FindFModel(self);
 
 	DVector3 translation(0,0,0);
 	DVector4 rotation(0,0,0,1);
 	DVector3 scaling(0,0,0);
 
-	if(mdl && frame_index < mdl->NumFrames())
+	if(mdl)
 	{
+		if(bone_index < 0 || bone_index >= mdl->NumJoints())
+		{
+			ThrowAbortException(X_OTHER, "bone index out of range");
+		}
+
+		if(frame_index < 0 || frame_index >= mdl->NumFrames())
+		{
+			ThrowAbortException(X_OTHER, "frame index out of range");
+		}
+
 		TRS pose = mdl->GetJointPose(bone_index, frame_index);
 
 		translation = DVector3(pose.translation);
@@ -5854,16 +5870,26 @@ DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneFramePose)
 	PARAM_NAME(bone_name);
 	PARAM_INT(frame_index);
 
-	int bone_index;
-
-	FModel * mdl = GetBoneShared(self, 0, bone_index, &bone_name);
+	FModel * mdl = FindFModel(self);
 
 	DVector3 translation(0,0,0);
 	DVector4 rotation(0,0,0,1);
 	DVector3 scaling(0,0,0);
 
-	if(mdl && frame_index < mdl->NumFrames())
+	if(mdl)
 	{
+		int bone_index = mdl->FindJoint(bone_name);
+
+		if(bone_index < 0 || bone_index >= mdl->NumJoints())
+		{
+			ThrowAbortException(X_OTHER, "Could not find bone '%s'", bone_name.GetChars());
+		}
+
+		if(frame_index < 0 || frame_index >= mdl->NumFrames())
+		{
+			ThrowAbortException(X_OTHER, "frame index out of range");
+		}
+
 		TRS pose = mdl->GetJointPose(bone_index, frame_index);
 
 		translation = DVector3(pose.translation);
@@ -5895,9 +5921,16 @@ DEFINE_ACTION_FUNCTION(AActor, GetBoneBasePosition)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(bone_index);
 
-	FModel * mdl = GetBoneShared(self, 0, bone_index, nullptr);
+	FModel * mdl = FindFModel(self);
 
-	ACTION_RETURN_VEC3(DVector3(mdl->GetJointPosition(bone_index)));
+	if(mdl)
+	{
+		ACTION_RETURN_VEC3(DVector3(mdl->GetJointPosition(bone_index)));
+	}
+	else
+	{
+		ACTION_RETURN_VEC3(DVector3(0,0,0));
+	}
 }
 
 DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneBasePosition)
@@ -5905,11 +5938,23 @@ DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneBasePosition)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_NAME(bone_name);
 
-	int bone_index;
+	FModel * mdl = FindFModel(self);
 
-	FModel * mdl = GetBoneShared(self, 0, bone_index, &bone_name);
+	if(mdl)
+	{
+		int bone_index = mdl->FindJoint(bone_name);
 
-	ACTION_RETURN_VEC3(DVector3(mdl->GetJointPosition(bone_index)));
+		if(bone_index < 0 || bone_index >= mdl->NumJoints())
+		{
+			ThrowAbortException(X_OTHER, "Could not find bone '%s'", bone_name.GetChars());
+		}
+
+		ACTION_RETURN_VEC3(DVector3(mdl->GetJointPosition(bone_index)));
+	}
+	else
+	{
+		ACTION_RETURN_VEC3(DVector3(0,0,0));
+	}
 }
 
 DEFINE_ACTION_FUNCTION(AActor, GetBoneBaseRotation)
@@ -5917,9 +5962,16 @@ DEFINE_ACTION_FUNCTION(AActor, GetBoneBaseRotation)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(bone_index);
 
-	FModel * mdl = GetBoneShared(self, 0, bone_index, nullptr);
+	FModel * mdl = FindFModel(self);
 
-	ACTION_RETURN_VEC4(DVector4(mdl->GetJointRotation(bone_index)));
+	if(mdl)
+	{
+		ACTION_RETURN_VEC4(DVector4(mdl->GetJointRotation(bone_index)));
+	}
+	else
+	{
+		ACTION_RETURN_VEC4(DVector4(0,0,0,0));
+	}
 }
 
 DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneBaseRotation)
@@ -5927,11 +5979,23 @@ DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneBaseRotation)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_NAME(bone_name);
 
-	int bone_index;
+	FModel * mdl = FindFModel(self);
 
-	FModel * mdl = GetBoneShared(self, 0, bone_index, &bone_name);
+	if(mdl)
+	{
+		int bone_index = mdl->FindJoint(bone_name);
 
-	ACTION_RETURN_VEC4(DVector4(mdl->GetJointRotation(bone_index)));
+		if(bone_index < 0 || bone_index >= mdl->NumJoints())
+		{
+			ThrowAbortException(X_OTHER, "Could not find bone '%s'", bone_name.GetChars());
+		}
+
+		ACTION_RETURN_VEC4(DVector4(mdl->GetJointRotation(bone_index)));
+	}
+	else
+	{
+		ACTION_RETURN_VEC4(DVector4(0,0,0,0));
+	}
 }
 
 //================================================
@@ -6228,87 +6292,17 @@ DEFINE_ACTION_FUNCTION(AActor, GetObjectToWorldMatrixRaw)
 // SetAnimation
 //================================================
 
-enum ESetAnimationFlags
-{
-	SAF_INSTANT = 1 << 0,
-	SAF_LOOP = 1 << 1,
-	SAF_NOOVERRIDE = 1 << 2,
-};
-
-class DAnimationFrame : public DObject
-{
-	DECLARE_ABSTRACT_CLASS(DAnimationFrame, DObject);
-};
-
 IMPLEMENT_CLASS(DAnimationFrame, true, false);
 
-class DPrecalculatedAnimationFrame : public DAnimationFrame
-{
-	DECLARE_CLASS(DPrecalculatedAnimationFrame, DAnimationFrame);
-public:
-	TArray<TRS> frameData;
-
-	void Serialize(FSerializer& arc) override
-	{
-		Super::Serialize(arc);
-		arc("frameData", frameData);
-	}
-};
-
+IMPLEMENT_CLASS(DPrecalculatedAnimationFrame, false, false);
 DEFINE_FIELD(DPrecalculatedAnimationFrame, frameData);
 
-IMPLEMENT_CLASS(DPrecalculatedAnimationFrame, false, false);
-
-class DInterpolatedFrame : public DAnimationFrame
-{
-	DECLARE_CLASS(DInterpolatedFrame, DAnimationFrame);
-public:
-	float inter;	// = -1.0f;
-	int frame1;		// = -1;
-	int frame2;		// = -1;
-
-	void Serialize(FSerializer& arc) override
-	{
-		Super::Serialize(arc);
-		arc("inter", inter);
-		arc("frame1", frame1);
-		arc("frame2", frame2);
-	}
-};
-
+IMPLEMENT_CLASS(DInterpolatedFrame, false, false);
 DEFINE_FIELD(DInterpolatedFrame, inter);
 DEFINE_FIELD(DInterpolatedFrame, frame1);
 DEFINE_FIELD(DInterpolatedFrame, frame2);
 
-IMPLEMENT_CLASS(DInterpolatedFrame, false, false);
-
-class DAnimationSequence : public DObject
-{
-	DECLARE_CLASS(DAnimationSequence, DObject);
-public:
-	int firstFrame;			// = 0;
-	int lastFrame;			// = 0;
-	int loopFrame;			// = 0;
-	float framerate;		// = 0;
-	double startFrame;		// = 0;
-	int flags;				// = MODELANIM_NONE;
-	double startTic;		// = 0; // when the current animation started (changing framerates counts as restarting) (or when animation starts if interpolating from previous animation)
-	double switchOffset;	// = 0; // when the animation was changed -- where to interpolate the switch from
-
-	void Serialize(FSerializer& arc) override
-	{
-		Super::Serialize(arc);
-		arc("firstFrame", firstFrame);
-		arc("lastFrame", lastFrame);
-		arc("loopFrame", loopFrame);
-		arc("framerate", framerate);
-		arc("startFrame", startFrame);
-		arc("flags", flags);
-		arc("startTic", startTic);
-		arc("switchOffset", switchOffset);
-	}
-};
-
+IMPLEMENT_CLASS(DAnimationSequence, false, false);
 DEFINE_FIELD(DAnimationSequence, firstFrame);
 DEFINE_FIELD(DAnimationSequence, lastFrame);
 DEFINE_FIELD(DAnimationSequence, loopFrame);
@@ -6318,33 +6312,47 @@ DEFINE_FIELD(DAnimationSequence, flags);
 DEFINE_FIELD(DAnimationSequence, startTic);
 DEFINE_FIELD(DAnimationSequence, switchOffset);
 
-IMPLEMENT_CLASS(DAnimationSequence, false, false);
-
-class DAnimationLayer : public DObject
-{
-	DECLARE_CLASS(DAnimationLayer, DObject);
-	HAS_OBJECT_POINTERS;
-public:
-	TObjPtr<DAnimationSequence*> curAnim;
-	TObjPtr<DAnimationFrame*> prevAnim;
-
-	void Serialize(FSerializer& arc) override
-	{
-		Super::Serialize(arc);
-		// TODO move these objects to the header file to clean up this ugly mess
-		arc("curAnim", *curAnim.ForceGetRaw());
-		arc("prevAnim", *prevAnim.ForceGetRaw());
-	}
-};
-
+IMPLEMENT_CLASS(DAnimationLayer, false, true);
+IMPLEMENT_POINTERS_START(DAnimationLayer)
+IMPLEMENT_POINTER(curAnim)
+IMPLEMENT_POINTER(prevAnim)
+IMPLEMENT_POINTERS_END;
 DEFINE_FIELD(DAnimationLayer, curAnim);
 DEFINE_FIELD(DAnimationLayer, prevAnim);
 
-IMPLEMENT_CLASS(DAnimationLayer, false, true);
-IMPLEMENT_POINTERS_START(DAnimationLayer)
-	IMPLEMENT_POINTER(curAnim)
-	IMPLEMENT_POINTER(prevAnim)
-IMPLEMENT_POINTERS_END;
+void DPrecalculatedAnimationFrame::Serialize(FSerializer& arc)
+{
+	Super::Serialize(arc);
+	arc("frameData", frameData);
+}
+
+void DInterpolatedFrame::Serialize(FSerializer& arc)
+{
+	Super::Serialize(arc);
+	arc("inter", inter);
+	arc("frame1", frame1);
+	arc("frame2", frame2);
+}
+
+void DAnimationSequence::Serialize(FSerializer& arc)
+{
+	Super::Serialize(arc);
+	arc("firstFrame", firstFrame);
+	arc("lastFrame", lastFrame);
+	arc("loopFrame", loopFrame);
+	arc("framerate", framerate);
+	arc("startFrame", startFrame);
+	arc("flags", flags);
+	arc("startTic", startTic);
+	arc("switchOffset", switchOffset);
+}
+
+void DAnimationLayer::Serialize(FSerializer& arc)
+{
+	Super::Serialize(arc);
+	arc("curAnim", *curAnim.ForceGetRaw());
+	arc("prevAnim", *prevAnim.ForceGetRaw());
+}
 
 FModel * FindFModel(AActor * self)
 {
@@ -6386,27 +6394,10 @@ FModel * FindFModel(AActor * self)
 	}
 }
 
-bool SetAnimationInternal(AActor * self, FName animName, double framerate, int startFrame, int loopFrame, int endFrame, int interpolateTics, int flags, double ticFrac, AnimInfo *anims = nullptr, TArray<TRS> * prevAnimOld = nullptr)
+template<typename Fn>
+static bool SetAnimationInternal(FModel * animation, Fn &&calcBonesCallback, double tic, FName animName, double framerate, int startFrame, int loopFrame, int endFrame, int interpolateTics, int flags, double ticFrac, AnimInfo *anims, TArray<TRS> * prevAnimOld)
 {
-	if(!self) ThrowAbortException(X_READ_NIL, "In function parameter self");
-
-	if(!(self->flags9 & MF9_DECOUPLEDANIMATIONS))
-	{
-		ThrowAbortException(X_OTHER, "Cannot set animation for non-decoupled actors");
-	}
-
-	auto smf_class = (self->modelData && self->modelData->modelDef) ? self->modelData->modelDef : self->GetClass();
-
-	if(!BaseSpriteModelFrames.CheckKey(smf_class))
-	{
-		ThrowAbortException(X_OTHER, "Actor class is missing a MODELDEF definition or a MODELDEF BaseFrame");
-	}
-
 	if(interpolateTics <= 0) interpolateTics = 1;
-
-	EnsureModelData(self);
-
-	if(!anims) anims = &self->modelData->anims;
 
 	if(animName == NAME_None)
 	{
@@ -6414,20 +6405,10 @@ bool SetAnimationInternal(AActor * self, FName animName, double framerate, int s
 
 		anims->curAnim.flags = MODELANIM_NONE;
 
-		if(anims == &self->modelData->anims) self->CalcBones(true);
+		calcBonesCallback();
 
 		return false;
 	}
-
-	double tic = self->GetModelTimer();
-	if (!WorldPaused(true) && !self->Level->isFrozen())
-	{
-		tic += ticFrac;
-	}
-
-	FModel * animation = FindFModel(self);
-
-	if(!animation) return false;
 
 	int animStart = animation->FindFirstFrame(animName);
 
@@ -6438,7 +6419,7 @@ bool SetAnimationInternal(AActor * self, FName animName, double framerate, int s
 
 		anims->curAnim.flags = MODELANIM_NONE;
 
-		if(anims == &self->modelData->anims) self->CalcBones(true);
+		calcBonesCallback();
 
 		return false;
 	}
@@ -6465,7 +6446,7 @@ bool SetAnimationInternal(AActor * self, FName animName, double framerate, int s
 		if(anims->curAnim.flags & MODELANIM_NONE) return false;
 
 		anims->curAnim.flags = MODELANIM_NONE;
-		if(anims == &self->modelData->anims) self->CalcBones(true);
+		calcBonesCallback();
 
 		return false;
 	}
@@ -6475,7 +6456,7 @@ bool SetAnimationInternal(AActor * self, FName animName, double framerate, int s
 		if(anims->curAnim.flags & MODELANIM_NONE) return false;
 
 		anims->curAnim.flags = MODELANIM_NONE;
-		if(anims == &self->modelData->anims) self->CalcBones(true);
+		calcBonesCallback();
 
 		return false;
 	}
@@ -6485,11 +6466,10 @@ bool SetAnimationInternal(AActor * self, FName animName, double framerate, int s
 		if(anims->curAnim.flags & MODELANIM_NONE) return false;
 
 		anims->curAnim.flags = MODELANIM_NONE;
-		if(anims == &self->modelData->anims) self->CalcBones(true);
+		calcBonesCallback();
 
 		return false;
 	}
-
 
 	if(!(flags & SAF_INSTANT))
 	{
@@ -6503,6 +6483,8 @@ bool SetAnimationInternal(AActor * self, FName animName, double framerate, int s
 				calcFrames(anims->curAnim, tic, to, inter);
 
 				const TArray<TRS>* animationData = animation->AttachAnimationData();
+
+				assert(to.frame1 < animation->NumFrames() && to.frame2 < animation->NumFrames());
 
 				ModelAnimFrame tmp = animation->PrecalculateFrame(anims->prevAnim, to, inter, animationData);
 
@@ -6555,8 +6537,78 @@ bool SetAnimationInternal(AActor * self, FName animName, double framerate, int s
 		anims->curAnim.switchOffset = 0;
 	}
 
-	if(anims == &self->modelData->anims) self->CalcBones(true);
+	calcBonesCallback();
 	return true;
+}
+
+bool SetAnimationInternal(AActor * self, FName animName, double framerate, int startFrame, int loopFrame, int endFrame, int interpolateTics, int flags, double ticFrac, AnimInfo *anims = nullptr, TArray<TRS> * prevAnimOld = nullptr)
+{
+	if(!self) ThrowAbortException(X_READ_NIL, "In function parameter self");
+
+	if(!(self->flags9 & MF9_DECOUPLEDANIMATIONS))
+	{
+		ThrowAbortException(X_OTHER, "Cannot set animation for non-decoupled actors");
+	}
+
+	EnsureModelData(self);
+
+	auto smf_class = (self->modelData && self->modelData->modelDef) ? self->modelData->modelDef : self->GetClass();
+
+	if(!BaseSpriteModelFrames.CheckKey(smf_class))
+	{
+		ThrowAbortException(X_OTHER, "Actor class is missing a MODELDEF definition or a MODELDEF BaseFrame");
+	}
+
+	if(!anims) anims = &self->modelData->anims;
+
+	double tic = self->GetModelTimer();
+	if (!WorldPaused(true) && !self->Level->isFrozen())
+	{
+		tic += ticFrac;
+	}
+
+	FModel * animation = FindFModel(self);
+
+	if(!animation) return false;
+
+	return SetAnimationInternal(animation, [self, anims]()
+	{
+		if(anims == &self->modelData->anims) self->CalcBones(true);
+	}, tic, animName, framerate, startFrame, loopFrame, endFrame, interpolateTics, flags, ticFrac, anims, prevAnimOld);
+}
+
+bool SetAnimationInternal(DVisualThinker * self, FName animName, double framerate, int startFrame, int loopFrame, int endFrame, int interpolateTics, int flags, double ticFrac)
+{
+	if(!self) ThrowAbortException(X_READ_NIL, "In function parameter self");
+
+	if(!(self->flags & VTF_AnimsDecoupled))
+	{
+		ThrowAbortException(X_OTHER, "Cannot set animation for non-decoupled visual thinkers");
+	}
+
+	if(!self->ModelClass)
+	{
+		ThrowAbortException(X_OTHER, "Visual thinker has no model set");
+	}
+
+	FSpriteModelFrame * smf = BaseSpriteModelFrames.CheckKey(self->ModelClass);
+	
+	if(!smf)
+	{
+		ThrowAbortException(X_OTHER, "Visual Thinker model is missing a MODELDEF definition or a MODELDEF BaseFrame");
+	}
+
+	FModel * animation = Models[smf->modelIDs[0]];
+
+	if(!animation) return false;
+
+	double tic = self->Level->LocalWorldTimer;
+	if (!WorldPaused(true))
+	{
+		tic += ticFrac;
+	}
+
+	return SetAnimationInternal(animation, [](){}, tic, animName, framerate, startFrame, loopFrame, endFrame, interpolateTics, flags, ticFrac, &self->DecoupledAnim, nullptr);
 }
 
 void SetAnimationNative(AActor * self, int i_animName, double framerate, int startFrame, int loopFrame, int endFrame, int interpolateTics, int flags)
@@ -6565,6 +6617,16 @@ void SetAnimationNative(AActor * self, int i_animName, double framerate, int sta
 }
 
 void SetAnimationUINative(AActor * self, int i_animName, double framerate, int startFrame, int loopFrame, int endFrame, int interpolateTics, int flags)
+{
+	SetAnimationInternal(self, FName(ENamedName(i_animName)), framerate, startFrame, loopFrame, endFrame, interpolateTics, flags, I_GetTimeFrac());
+}
+
+void SetAnimationNativeVT(DVisualThinker * self, int i_animName, double framerate, int startFrame, int loopFrame, int endFrame, int interpolateTics, int flags)
+{
+	SetAnimationInternal(self, FName(ENamedName(i_animName)), framerate, startFrame, loopFrame, endFrame, interpolateTics, flags, 1);
+}
+
+void SetAnimationUINativeVT(DVisualThinker * self, int i_animName, double framerate, int startFrame, int loopFrame, int endFrame, int interpolateTics, int flags)
 {
 	SetAnimationInternal(self, FName(ENamedName(i_animName)), framerate, startFrame, loopFrame, endFrame, interpolateTics, flags, I_GetTimeFrac());
 }
@@ -6611,12 +6673,64 @@ void SetAnimationFrameRateInternal(AActor * self, double framerate, double ticFr
 	anims->curAnim.framerate = (float)framerate;
 }
 
+
+void SetAnimationFrameRateInternal(DVisualThinker * self, double framerate, double ticFrac)
+{
+	if(!self) ThrowAbortException(X_READ_NIL, "In function parameter self");
+
+	if(!(self->flags & VTF_AnimsDecoupled))
+	{
+		ThrowAbortException(X_OTHER, "Cannot set animation for non-decoupled visual thinkers");
+	}
+
+	if(!self->ModelClass)
+	{
+		ThrowAbortException(X_OTHER, "Visual thinker has no model set");
+	}
+
+	if(!BaseSpriteModelFrames.CheckKey(self->ModelClass))
+	{
+		ThrowAbortException(X_OTHER, "Visual Thinker model is missing a MODELDEF definition or a MODELDEF BaseFrame");
+	}
+
+	double tic = self->Level->LocalWorldTimer;
+	if (!WorldPaused(true))
+	{
+		tic += ticFrac;
+	}
+
+	if(self->DecoupledAnim.curAnim.startTic >= tic)
+	{
+		self->DecoupledAnim.curAnim.framerate = (float)framerate;
+		return;
+	}
+
+	self->DecoupledAnim.prevAnim = nullptr; // clear prev anim
+
+	double frame = getCurrentFrame(self->DecoupledAnim.curAnim, tic, nullptr);
+
+	self->DecoupledAnim.curAnim.startFrame = frame;
+	self->DecoupledAnim.curAnim.startTic = tic;
+	self->DecoupledAnim.curAnim.switchOffset = 0;
+	self->DecoupledAnim.curAnim.framerate = (float)framerate;
+}
+
 void SetAnimationFrameRateNative(AActor * self, double framerate)
 {
 	SetAnimationFrameRateInternal(self, framerate, 1);
 }
 
 void SetAnimationFrameRateUINative(AActor * self, double framerate)
+{
+	SetAnimationFrameRateInternal(self, framerate, I_GetTimeFrac());
+}
+
+void SetAnimationFrameRateNativeVT(DVisualThinker * self, double framerate)
+{
+	SetAnimationFrameRateInternal(self, framerate, 1);
+}
+
+void SetAnimationFrameRateUINativeVT(DVisualThinker * self, double framerate)
 {
 	SetAnimationFrameRateInternal(self, framerate, I_GetTimeFrac());
 }
@@ -6924,6 +7038,58 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, SetAnimationFrameRateUI, SetAnimationFrame
 	return 0;
 }
 
+DEFINE_ACTION_FUNCTION_NATIVE(DVisualThinker, SetAnimation, SetAnimationNativeVT)
+{
+	PARAM_SELF_PROLOGUE(DVisualThinker);
+	PARAM_NAME(animName);
+	PARAM_FLOAT(framerate);
+	PARAM_INT(startFrame);
+	PARAM_INT(loopFrame);
+	PARAM_INT(endFrame);
+	PARAM_INT(interpolateTics);
+	PARAM_INT(flags);
+
+	SetAnimationInternal(self, animName, framerate, startFrame, loopFrame, endFrame, interpolateTics, flags, 1);
+
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DVisualThinker, SetAnimationUI, SetAnimationUINativeVT)
+{
+	PARAM_SELF_PROLOGUE(DVisualThinker);
+	PARAM_NAME(animName);
+	PARAM_FLOAT(framerate);
+	PARAM_INT(startFrame);
+	PARAM_INT(loopFrame);
+	PARAM_INT(endFrame);
+	PARAM_INT(interpolateTics);
+	PARAM_INT(flags);
+
+	SetAnimationInternal(self, animName, framerate, startFrame, loopFrame, endFrame, interpolateTics, flags, I_GetTimeFrac());
+
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DVisualThinker, SetAnimationFrameRate, SetAnimationFrameRateNativeVT)
+{
+	PARAM_SELF_PROLOGUE(DVisualThinker);
+	PARAM_FLOAT(framerate);
+
+	SetAnimationFrameRateInternal(self, framerate, 1);
+
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DVisualThinker, SetAnimationFrameRateUI, SetAnimationFrameRateUINativeVT)
+{
+	PARAM_SELF_PROLOGUE(DVisualThinker);
+	PARAM_FLOAT(framerate);
+
+	SetAnimationFrameRateInternal(self, framerate, I_GetTimeFrac());
+
+	return 0;
+}
+
 AnimInfo AnimLayerToAnimInfo(DAnimationLayer *layer)
 {
 	AnimInfo info;
@@ -7127,7 +7293,7 @@ DEFINE_ACTION_FUNCTION(AActor, SetAnimationLayerFrameRateUI)
 	ACTION_RETURN_POINTER(AnimInfoToAnimLayer(nativeAnims));
 }
 
-DPrecalculatedAnimationFrame* CalculateAnimationInternal(AActor * self, AnimInfo *anims, double tic)
+DPrecalculatedAnimationFrame* CalculateAnimationInternal(AActor * self, AnimInfo *anims, double tic, bool &oob, FString &oob_message)
 {
 	FModel * mdl = FindFModel(self);
 
@@ -7140,6 +7306,16 @@ DPrecalculatedAnimationFrame* CalculateAnimationInternal(AActor * self, AnimInfo
 	float inter;
 
 	calcFrames(anims->curAnim, tic, to, inter);
+
+	int max = mdl->NumFrames();
+
+	if(to.frame1 >= max || to.frame2 >= max)
+	{
+		int oob_frame = (to.frame1 >= max) ? to.frame1 : to.frame2;
+		oob_message.Format("Frame %d is out of bounds (%d is the max)", oob_frame, max);
+		oob = true;
+		return nullptr;
+	}
 
 	ModelAnimFrame frame = mdl->PrecalculateFrame(anims->prevAnim, to, inter, mdl->AttachAnimationData());
 	assert(std::holds_alternative<ModelAnimFramePrecalculatedIQM>(frame));
@@ -7161,9 +7337,18 @@ DEFINE_ACTION_FUNCTION(AActor, CalculateAnimation)
 
 	AnimInfo nativeAnims = AnimLayerToAnimInfo(layer);
 
-	DPrecalculatedAnimationFrame* calc = CalculateAnimationInternal(self, &nativeAnims, self->GetModelTimer() + 1);
+	bool oob = false;
+	FString oob_message;
+
+	DPrecalculatedAnimationFrame* calc = CalculateAnimationInternal(self, &nativeAnims, self->GetModelTimer() + 1, oob, oob_message);
 
 	RestoreAnimLayer(layer, nativeAnims);
+
+	if(oob)
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, oob_message.GetChars());
+		ACTION_RETURN_POINTER(nullptr);
+	}
 
 	ACTION_RETURN_POINTER(calc);
 }
@@ -7180,9 +7365,18 @@ DEFINE_ACTION_FUNCTION(AActor, CalculateAnimationUI)
 
 	AnimInfo nativeAnims = AnimLayerToAnimInfo(layer);
 
-	DPrecalculatedAnimationFrame* calc = CalculateAnimationInternal(self, &nativeAnims, self->GetModelTimer() + I_GetTimeFrac());
+	bool oob = false;
+	FString oob_message;
+
+	DPrecalculatedAnimationFrame* calc = CalculateAnimationInternal(self, &nativeAnims, self->GetModelTimer() + I_GetTimeFrac(), oob, oob_message);
 
 	RestoreAnimLayer(layer, nativeAnims);
+
+	if(oob)
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, oob_message.GetChars());
+		ACTION_RETURN_POINTER(nullptr);
+	}
 
 	ACTION_RETURN_POINTER(calc);
 }
@@ -7201,6 +7395,15 @@ DEFINE_ACTION_FUNCTION(AActor, CalculateAnimationFrame)
 
 	if(!mdl)
 	{
+		ACTION_RETURN_POINTER(nullptr);
+	}
+
+	int max = mdl->NumFrames();
+
+	if(iframe->frame1 >= max || iframe->frame2 >= max)
+	{
+		int oob = (iframe->frame1 >= max) ? iframe->frame1 : iframe->frame2;
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Frame %d is out of bounds (%d is the max)", oob, max);
 		ACTION_RETURN_POINTER(nullptr);
 	}
 

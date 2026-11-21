@@ -1461,6 +1461,18 @@ public:
 		return vec_t(g_sindeg(Degrees_));
 	}
 
+	//cos for renderer, not playsim
+	inline vec_t FastCos() const
+	{
+		return vec_t(cos(Radians()));
+	}
+
+	//sin for renderer, not playsim
+	inline vec_t FastSin() const
+	{
+		return vec_t(sin(Radians()));
+	}
+
 	double Tan() const
 	{
 		// use an optimized approach if we have a sine table. If not just call the CRT's tan function.
@@ -1617,6 +1629,11 @@ struct TRotator
 
 	constexpr TRotator (const Angle &p, const Angle &y, const Angle &r)
 		: Pitch(p), Yaw(y), Roll(r)
+	{
+	}
+
+	constexpr explicit TRotator (const TRotator &prev, const TRotator &cur, double ticFrac) // interpolated
+		: Pitch(prev.Pitch + deltaangle(prev.Pitch, cur.Pitch) * ticFrac), Yaw(prev.Yaw + deltaangle(prev.Yaw, cur.Yaw) * ticFrac), Roll(prev.Roll + deltaangle(prev.Roll, cur.Roll) * ticFrac)
 	{
 	}
 

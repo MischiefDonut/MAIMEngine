@@ -25,21 +25,24 @@
 #pragma once
 
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
 
 #include "floatrect.h"
+#include "m_round.h"
 #include "palentry.h"
 #include "refcounted.h"
+#include "tarray.h"
 #include "textureid.h"
+#include "textures.h" // IWYU pragma: keep for FTexture
 #include "vectors.h"
 #include "zstring.h"
-#include "m_round.h"
+
+class FGameTexture;
+class FMaterial;
 
 // 15 because 0th texture is our texture
 #define MAX_CUSTOM_HW_SHADER_TEXTURES 15
-class FTexture;
-class ISoftwareTexture;
-class FMaterial;
 
 struct SpritePositioningInfo
 {
@@ -145,7 +148,6 @@ class FGameTexture
 	int16_t SkyOffset = 0;
 	uint16_t Rotations = 0xffff;
 
-
 public:
 	float alphaThreshold = 0.5f;
 
@@ -191,6 +193,7 @@ public:
 	bool isFullbrightDisabled() const { return !!(flags & GTexf_DisableFullbrightSprites); }
 	bool isFullbright() const { return !!(flags & GTexf_RenderFullbright); }
 	bool isFullNameTexture() const { return !!(flags & GTexf_FullNameTexture); }
+	void setFullNameTexture() { flags |= GTexf_FullNameTexture; }
 	bool expandSprites() { return expandSprite == -1? ShouldExpandSprite() : !!expandSprite; }
 	bool useWorldPanning() const { return !!(flags & GTexf_WorldPanning);  }
 	void SetWorldPanning(bool on) { if (on) flags |= GTexf_WorldPanning; else flags &= ~GTexf_WorldPanning; }
@@ -451,7 +454,6 @@ public:
 		if (!Layers) Layers = std::make_unique<FMaterialLayers>();
 		Layers->Specular = T;
 	}
-
 };
 
 inline FGameTexture* MakeGameTexture(FTexture* tex, const char *name, ETextureType useType)

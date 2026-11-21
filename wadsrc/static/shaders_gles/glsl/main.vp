@@ -21,11 +21,13 @@ attribute vec4 aColor;
 
 varying vec4 vTexCoord;
 varying vec4 vColor;
+varying vec3 vLightmap;
 
 #ifndef SIMPLE	// we do not need these for simple shaders
 attribute vec4 aVertex2;
 attribute vec4 aNormal;
 attribute vec4 aNormal2;
+attribute vec3 aLightmap;
 #if __VERSION__ >= 300
 attribute vec4 aBoneWeight;
 attribute uvec4 aBoneSelector;
@@ -82,6 +84,8 @@ void main()
 	#endif
 
 	#ifndef SIMPLE
+		vLightmap = aLightmap;
+
 		pixelpos.xyz = worldcoord.xyz;
 		pixelpos.w = -eyeCoordPos.z/eyeCoordPos.w;
 

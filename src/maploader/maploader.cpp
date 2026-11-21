@@ -35,6 +35,7 @@
 #include "p_lnspec.h"
 
 #include "v_text.h"
+#include "colorspace.h"
 #include "p_setup.h"
 #include "gi.h"
 #include "engineerrors.h"
@@ -65,8 +66,6 @@ CVAR (Bool, gennodes, false, CVAR_SERVERINFO|CVAR_GLOBALCONFIG);
 FARG(blockmap, "Configuration", "Regenerates the map's BLOCKMAP.", "",
 	"Causes " GAMENAME " to ignore all the BLOCKMAP information a map provides and generate it"
 	" instead. This is equivalent to +set genblockmap 1.");
-
-FARG_ADVANCED(enablelightmaps, "Experimental", "", "");
 
 EXTERN_FARG(xlat);
 
@@ -1124,7 +1123,7 @@ void MapLoader::LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 		}
 		else  if (Level->flags & LEVEL_HASFADETABLE)
 		{
-			ss->Colormap.FadeColor= 0x939393;	// The true color software renderer needs this. (The hardware renderer will ignore this value if LEVEL_HASFADETABLE is set.)
+			ss->Colormap.FadeColor = Color::str("#939393"); // The true color software renderer needs this. (The hardware renderer will ignore this value if LEVEL_HASFADETABLE is set.)
 		}
 		else
 		{
@@ -1872,8 +1871,9 @@ void MapLoader::LoadLineDefs2 (MapData * map)
 {
 	int i;
 
+	Level->sides.Clear(); // ensure all sides are cleaned up
 	Level->sides.Alloc(count);
-	memset(&Level->sides[0], 0, count * sizeof(side_t));
+	memset(&Level->sides[0], 0, count * sizeof(side_t)); // it's safe to zero-initialize TArray
 
 	sidetemp.Resize(max<int>(count, Level->vertexes.Size()));
 	for (i = 0; i < count; i++)
@@ -3229,14 +3229,13 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 
 	InitRenderInfo();				// create hardware independent renderer resources for the level. This must be done BEFORE the PolyObj Spawn!!!
 	Level->ClearDynamic3DFloorData();	// CreateVBO must be run on the plain 3D floor data.
-	CreateVBO(screen->mVertexData, Level->sectors);
-
-	screen->InitLightmap(Level->LMTextureSize, Level->LMTextureCount, Level->LMTextureData);
-
-	for (auto &sec : Level->sectors)
+	for (auto& sec : Level->sectors)
 	{
 		P_Recalculate3DFloors(&sec);
 	}
+
+	CreateVBO(screen->mVertexData, Level->sectors);
+	screen->InitLightmap(Level->LMTextureSize, Level->LMTextureCount, Level->LMTextureData);
 
 	SWRenderer->SetColormap(Level);	//The SW renderer needs to do some special setup for the level's default colormap.
 	InitPortalGroups(Level);
@@ -3286,12 +3285,13 @@ void MapLoader::SetSubsectorLightmap(const LightmapSurface &surface)
 	else
 	{
 		int index = surface.Type == ST_CEILING ? 0 : 1;
-		const auto &ffloors = surface.Subsector->sector->e->XFloor.ffloors;
+		auto &ffloors = surface.Subsector->sector->e->XFloor.ffloors;
 		for (unsigned int i = 0; i < ffloors.Size(); i++)
 		{
 			if (ffloors[i]->model == surface.ControlSector)
 			{
 				surface.Subsector->lightmap[index][i + 1] = surface;
+				ffloors[i]->lmindex = i;
 			}
 		}
 	}
@@ -3342,9 +3342,7 @@ void MapLoader::LoadLightmap(MapData *map)
 	Level->LPMinY = 0;
 	Level->LPWidth = 0;
 	Level->LPHeight = 0;
-
-	if (!Args->CheckParm(FArg_enablelightmaps))
-		return;		// this feature is still too early WIP to allow general access
+	Level->LPCellSize = 32;
 
 	if (!map->Size(ML_LIGHTMAP))
 		return;
@@ -3355,7 +3353,7 @@ void MapLoader::LoadLightmap(MapData *map)
 
 
 	int version = fr.ReadInt32();
-	if (version != 0)
+	if (version != LIGHTMAP_VERSION)
 	{
 		Printf(PRINT_HIGH, "LoadLightmap: unsupported lightmap lump version\n");
 		return;
@@ -3367,12 +3365,18 @@ void MapLoader::LoadLightmap(MapData *map)
 	uint32_t numTexCoords = fr.ReadUInt32();
 	uint32_t numLightProbes = fr.ReadUInt32();
 	uint32_t numSubsectors = fr.ReadUInt32();
+	Level->LPCellSize = fr.ReadInt32();
 	uint32_t numTexBytes = numTextures * textureSize * textureSize * 3 * 2;
 
 	if (numSurfaces == 0 || numTexCoords == 0 || numTexBytes == 0)
 		return;
 
-	Printf(PRINT_HIGH, "WARNING! Lightmaps are an experimental feature and are subject to change before being finalized. Do not expect this to work as-is in future releases of %s!\n", GAMENAME);
+	float sunDir[3], sunColor[3];
+	fr.Read(sunDir, sizeof(float) * 3);
+	fr.Read(sunColor, sizeof(float) * 3);
+	Level->SunDirection = FVector3(sunDir);
+	Level->SunColor = FVector3(sunColor);
+	Level->SunIntensity = fr.ReadFloat();
 
 	/*if (numSubsectors != Level->subsectors.Size())
 	{
@@ -3382,7 +3386,18 @@ void MapLoader::LoadLightmap(MapData *map)
 	if (numLightProbes > 0)
 	{
 		Level->LightProbes.Resize(numLightProbes);
-		fr.Read(&Level->LightProbes[0], sizeof(LightProbe) * numLightProbes);
+
+		for (int i = 0; i < numLightProbes; i++)
+		{
+			LightProbe& probe = Level->LightProbes[i];
+
+			probe.X = fr.ReadFloat();
+			probe.Y = fr.ReadFloat();
+			probe.Z = fr.ReadFloat();
+			probe.Red = fr.ReadFloat();
+			probe.Green = fr.ReadFloat();
+			probe.Blue = fr.ReadFloat();
+		}
 
 		// Sort the light probes so that they are ordered by cell.
 		// This lets us point at the first probe knowing all other probes in the cell will follow.
@@ -3471,6 +3486,17 @@ void MapLoader::LoadLightmap(MapData *map)
 		offset += count * 2;
 	}
 
+	// [NL] Since the order of the sides can change during load, create a way
+	// to translate from the original UMDF sidedef index to the real sidenum
+	// TODO: Could probably optimize this into a flat array, but we need to know how 
+	// large to make the array, since the size could have changed.
+	TMap<int, int> umdfSideToSideNum;
+	for (size_t i = 0; i < Level->sides.size(); i++)
+	{
+		const side_t& side = Level->sides[i];
+		umdfSideToSideNum.Insert(side.UDMFIndex, side.sidenum);
+	}
+
 	// Load the surfaces we have lightmap data for
 
 	for (uint32_t i = 0; i < numSurfaces; i++)
@@ -3499,8 +3525,15 @@ void MapLoader::LoadLightmap(MapData *map)
 		}
 		else if (type != ST_NULL)
 		{
-			surface.Side = &Level->sides[typeIndex];
-			SetSideLightmap(surface);
+			if (int* sideIndex = umdfSideToSideNum.CheckKey(typeIndex))
+			{
+				surface.Side = &Level->sides[*sideIndex];
+				SetSideLightmap(surface);
+			}
+			else
+			{
+				Printf(PRINT_HIGH, "Couldn't find sidedef %d to apply lightmap to\n", typeIndex);
+			}
 		}
 	}
 

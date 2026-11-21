@@ -466,6 +466,9 @@ void VulkanRenderDevice::InitLightmap(int LMTextureSize, int LMTextureCount, TAr
 	{
 		GetTextureManager()->SetLightmap(LMTextureSize, LMTextureCount, LMTextureData);
 		LMTextureData.Reset(); // We no longer need this, release the memory
+
+		// Update the lightmap bindings
+		mDescriptorSetManager->UpdateFixedSet();
 	}
 }
 
