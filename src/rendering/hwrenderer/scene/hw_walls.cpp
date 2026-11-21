@@ -157,7 +157,7 @@ void HWWall::RenderMirrorSurface(HWWallDispatcher*di, FRenderState &state)
 	state.AlphaFunc(Alpha_Greater, 0);
 
 	auto tex = TexMan.GetGameTexture(TexMan.mirrorTexture, false);
-	state.SetMaterial(tex, UF_None, 0, CLAMP_NONE, NO_TRANSLATION, -1); // do not upscale the mirror texture.
+	state.SetMaterial(tex, UF_None, 0, CLAMP_NONE, NO_TRANSLATION, -1, nullptr); // do not upscale the mirror texture.
 
 	flags &= ~HWWall::HWF_GLOW;
 	RenderWall(state, HWWall::RWF_BLANK);
@@ -213,7 +213,7 @@ void HWWall::RenderTexturedWall(HWWallDispatcher*di, FRenderState &state, int rf
 		state.SetGlowParams(topglowcolor, bottomglowcolor);
 		SetGlowPlanes(state, frontsector->ceilingplane, frontsector->floorplane);
 	}
-	state.SetMaterial(texture, UF_Texture, 0, flags & 3, NO_TRANSLATION, -1);
+	state.SetMaterial(texture, UF_Texture, 0, flags & 3, NO_TRANSLATION, -1, nullptr);
 #ifdef NPOT_EMULATION
 	// Test code, could be reactivated as a compatibility option in the unlikely event that some old vanilla map eve needs it.
 	if (hw_npottest)
@@ -427,62 +427,54 @@ void HWWall::SetupLights(HWDrawInfo*di, FDynLightData &lightdata)
 	if ((seg->sidedef->Flags & WALLF_POLYOBJ) && sub)
 	{
 		// Polobject segs cannot be checked per sidedef so use the subsector instead.
-		if (di->Level->lightlists.flat_dlist.SSize() > sub->section->Index())
+		for(FDynamicLight * lightsource : sub->section->dlist)
 		{
-			TMap<FDynamicLight *, std::unique_ptr<FLightNode>>::Iterator it(di->Level->lightlists.flat_dlist[sub->section->Index()]);
-			TMap<FDynamicLight *, std::unique_ptr<FLightNode>>::Pair *pair;
-			while (it.NextPair(pair))
+			if (lightsource->IsActive() && !lightsource->DontLightMap())
 			{
-				auto node = pair->Value.get();
-				if (!node) continue;
+				iter_dlight++;
 
-				if (node->lightsource->IsActive() && !node->lightsource->DontLightMap())
+				DVector3 posrel = lightsource->PosRelative(seg->frontsector->PortalGroup);
+				float x = posrel.X;
+				float y = posrel.Y;
+				float z = posrel.Z;
+				float dist = fabsf(p.DistToPoint(x, z, y));
+				float radius = lightsource->GetRadius();
+				float scale = 1.0f / ((2.f * radius) - dist);
+				FVector3 fn, pos;
+
+				if (radius > 0.f && dist < radius)
 				{
-					iter_dlight++;
+					FVector3 nearPt, up, right;
 
-					DVector3 posrel = node->lightsource->PosRelative(seg->frontsector->PortalGroup);
-					float x = posrel.X;
-					float y = posrel.Y;
-					float z = posrel.Z;
-					float dist = fabsf(p.DistToPoint(x, z, y));
-					float radius = node->lightsource->GetRadius();
-					float scale = 1.0f / ((2.f * radius) - dist);
-					FVector3 fn, pos;
+					pos = { x, z, y };
+					fn = p.Normal();
 
-					if (radius > 0.f && dist < radius)
+					fn.GetRightUp(right, up);
+
+					FVector3 tmpVec = fn * dist;
+					nearPt = pos + tmpVec;
+
+					FVector3 t1;
+					int outcnt[4]={0,0,0,0};
+					texcoord tcs[4];
+
+					// do a quick check whether the light touches this polygon
+					for(int i=0;i<4;i++)
 					{
-						FVector3 nearPt, up, right;
+						t1 = FVector3(&vtx[i*3]);
+						FVector3 nearToVert = t1 - nearPt;
+						tcs[i].u = ((nearToVert | right) * scale) + 0.5f;
+						tcs[i].v = ((nearToVert | up) * scale) + 0.5f;
 
-						pos = { x, z, y };
-						fn = p.Normal();
+						if (tcs[i].u<0) outcnt[0]++;
+						if (tcs[i].u>1) outcnt[1]++;
+						if (tcs[i].v<0) outcnt[2]++;
+						if (tcs[i].v>1) outcnt[3]++;
 
-						fn.GetRightUp(right, up);
-
-						FVector3 tmpVec = fn * dist;
-						nearPt = pos + tmpVec;
-
-						FVector3 t1;
-						int outcnt[4]={0,0,0,0};
-						texcoord tcs[4];
-
-						// do a quick check whether the light touches this polygon
-						for(int i=0;i<4;i++)
-						{
-							t1 = FVector3(&vtx[i*3]);
-							FVector3 nearToVert = t1 - nearPt;
-							tcs[i].u = ((nearToVert | right) * scale) + 0.5f;
-							tcs[i].v = ((nearToVert | up) * scale) + 0.5f;
-
-							if (tcs[i].u<0) outcnt[0]++;
-							if (tcs[i].u>1) outcnt[1]++;
-							if (tcs[i].v<0) outcnt[2]++;
-							if (tcs[i].v>1) outcnt[3]++;
-
-						}
-						if (outcnt[0]!=4 && outcnt[1]!=4 && outcnt[2]!=4 && outcnt[3]!=4)
-						{
-							draw_dlight += GetLight(lightdata, seg->frontsector->PortalGroup, p, node->lightsource, true);
-						}
+					}
+					if (outcnt[0]!=4 && outcnt[1]!=4 && outcnt[2]!=4 && outcnt[3]!=4)
+					{
+						draw_dlight += GetLight(lightdata, seg->frontsector->PortalGroup, p, lightsource, true);
 					}
 				}
 			}
@@ -490,62 +482,54 @@ void HWWall::SetupLights(HWDrawInfo*di, FDynLightData &lightdata)
 	}
 	else
 	{
-		if (di->Level->lightlists.wall_dlist.SSize() > seg->sidedef->Index())
+		for(FDynamicLight * lightsource : seg->sidedef->dlist)
 		{
-			TMap<FDynamicLight *, std::unique_ptr<FLightNode>>::Iterator it(di->Level->lightlists.wall_dlist[seg->sidedef->Index()]);
-			TMap<FDynamicLight *, std::unique_ptr<FLightNode>>::Pair *pair;
-			while (it.NextPair(pair))
+			if (lightsource->IsActive() && !lightsource->DontLightMap())
 			{
-				auto node = pair->Value.get();
-				if (!node) continue;
+				iter_dlight++;
 
-				if (node->lightsource->IsActive() && !node->lightsource->DontLightMap())
+				DVector3 posrel = lightsource->PosRelative(seg->frontsector->PortalGroup);
+				float x = posrel.X;
+				float y = posrel.Y;
+				float z = posrel.Z;
+				float dist = fabsf(p.DistToPoint(x, z, y));
+				float radius = lightsource->GetRadius();
+				float scale = 1.0f / ((2.f * radius) - dist);
+				FVector3 fn, pos;
+
+				if (radius > 0.f && dist < radius)
 				{
-					iter_dlight++;
+					FVector3 nearPt, up, right;
 
-					DVector3 posrel = node->lightsource->PosRelative(seg->frontsector->PortalGroup);
-					float x = posrel.X;
-					float y = posrel.Y;
-					float z = posrel.Z;
-					float dist = fabsf(p.DistToPoint(x, z, y));
-					float radius = node->lightsource->GetRadius();
-					float scale = 1.0f / ((2.f * radius) - dist);
-					FVector3 fn, pos;
+					pos = { x, z, y };
+					fn = p.Normal();
 
-					if (radius > 0.f && dist < radius)
+					fn.GetRightUp(right, up);
+
+					FVector3 tmpVec = fn * dist;
+					nearPt = pos + tmpVec;
+
+					FVector3 t1;
+					int outcnt[4]={0,0,0,0};
+					texcoord tcs[4];
+
+					// do a quick check whether the light touches this polygon
+					for(int i=0;i<4;i++)
 					{
-						FVector3 nearPt, up, right;
+						t1 = FVector3(&vtx[i*3]);
+						FVector3 nearToVert = t1 - nearPt;
+						tcs[i].u = ((nearToVert | right) * scale) + 0.5f;
+						tcs[i].v = ((nearToVert | up) * scale) + 0.5f;
 
-						pos = { x, z, y };
-						fn = p.Normal();
+						if (tcs[i].u<0) outcnt[0]++;
+						if (tcs[i].u>1) outcnt[1]++;
+						if (tcs[i].v<0) outcnt[2]++;
+						if (tcs[i].v>1) outcnt[3]++;
 
-						fn.GetRightUp(right, up);
-
-						FVector3 tmpVec = fn * dist;
-						nearPt = pos + tmpVec;
-
-						FVector3 t1;
-						int outcnt[4]={0,0,0,0};
-						texcoord tcs[4];
-
-						// do a quick check whether the light touches this polygon
-						for(int i=0;i<4;i++)
-						{
-							t1 = FVector3(&vtx[i*3]);
-							FVector3 nearToVert = t1 - nearPt;
-							tcs[i].u = ((nearToVert | right) * scale) + 0.5f;
-							tcs[i].v = ((nearToVert | up) * scale) + 0.5f;
-
-							if (tcs[i].u<0) outcnt[0]++;
-							if (tcs[i].u>1) outcnt[1]++;
-							if (tcs[i].v<0) outcnt[2]++;
-							if (tcs[i].v>1) outcnt[3]++;
-
-						}
-						if (outcnt[0]!=4 && outcnt[1]!=4 && outcnt[2]!=4 && outcnt[3]!=4)
-						{
-							draw_dlight += GetLight(lightdata, seg->frontsector->PortalGroup, p, node->lightsource, true);
-						}
+					}
+					if (outcnt[0]!=4 && outcnt[1]!=4 && outcnt[2]!=4 && outcnt[3]!=4)
+					{
+						draw_dlight += GetLight(lightdata, seg->frontsector->PortalGroup, p, lightsource, true);
 					}
 				}
 			}
@@ -2244,7 +2228,7 @@ CVAR(Int, bottomskew, 0, 0)
 //
 //
 //==========================================================================
-void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, sector_t * backsector)
+void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, sector_t * backsector, bool isculled)
 {
 	vertex_t * v1, *v2;
 	float fch1;
@@ -2362,6 +2346,26 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 	{
 		SkyNormal(di, frontsector, v1, v2);
 		DoHorizon(di, seg, frontsector, v1, v2);
+		return;
+	}
+
+	if (isculled)
+	{
+		if (frontsector->GetTexture(sector_t::ceiling) == skyflatnum)
+		{
+			SkyNormal(di, frontsector, v1, v2);
+		}
+		else
+		{
+			texture = TexMan.GetGameTexture(frontsector->GetTexture(sector_t::ceiling), true);
+			if (texture && texture->isValid())
+			{
+				DoTexture(di, RENDERWALL_TOP, seg, true,
+					crefz, frefz,
+					fch1, fch2, ffh1, ffh2, 0, 0,
+					fch1, fch2, ffh1, ffh2);
+			}
+		}
 		return;
 	}
 

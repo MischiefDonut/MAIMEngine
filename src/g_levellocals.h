@@ -50,13 +50,6 @@
 
 EXTERN_CVAR(Bool, sv_autocompat)
 
-struct FGlobalDLightLists
-{
-	//TODO add TSet and switch from TMap to TSet
-	TArray<TMap<FDynamicLight*, std::unique_ptr<FLightNode>>> flat_dlist;
-	TArray<TMap<FDynamicLight*, std::unique_ptr<FLightNode>>> wall_dlist;
-};
-
 //============================================================================
 //
 // This is used to mark processed portals for some collection functions.
@@ -589,6 +582,7 @@ public:
 	int			lumpnum;
 	FString		LevelName;
 	FString		MapName;			// the lump name (E1M1, MAP01, etc)
+	FName		MapFName;			// cache name index for lump
 	FString		NextMap;			// go here when using the regular exit
 	FString		NextSecretMap;		// map to go to when used secret exit
 	FString		AuthorName;
@@ -688,6 +682,8 @@ public:
 	float		skyspeed2;
 	float		skymistspeed;
 	float		skymistyscale;			// Y-scale for skymist layer. Scales from horizon as midpoint. Doesn't tile.
+	float		culldist;				// Some functions (SegFog() in hw_setcolor.cpp) don't have access to Viewpoint->culldistsq
+	PalEntry	cullcolor;
 
 	double		sky1pos, sky2pos;
 	float		hw_sky1pos, hw_sky2pos, hw_skymistpos, hw_skymistyscale;
@@ -781,7 +777,6 @@ public:
 
 	int                LocalWorldTimer = 0;	// For client-sided actions that are still bound to world processing.
 	int                LocalTimer = 0;		// For client-sided actions independent of any world state.
-	FGlobalDLightLists lightlists;
 
 	FDynamicLight *lights;
 	DVisualThinker* VisualThinkerHead = nullptr;

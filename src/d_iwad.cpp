@@ -24,6 +24,7 @@
 
 #include "c_cvars.h"
 #include "cmdlib.h"
+#include "c_console.h"
 #include "d_main.h"
 #include "d_steam.h"
 #include "engineerrors.h"
@@ -67,6 +68,12 @@ EXTERN_FARG(host);
 EXTERN_FARG(join);
 
 bool foundprio = false; // global to prevent iwad box from appearing
+
+#ifdef _WIN32
+static constexpr char PATH_LIST_SEPARATOR = ';';
+#else
+static constexpr char PATH_LIST_SEPARATOR = ':';
+#endif
 
 //==========================================================================
 //
@@ -484,6 +491,18 @@ void FIWadManager::CollectSearchPaths()
 				FString nice = NicePath(value);
 				if (nice.Len() > 0) mRecursiveSearchPaths.Push(nice);
 			}
+			else if (stricmp(key, "PathList") == 0)
+			{
+				FString nice = NicePath(value);
+				if (nice.Len() > 0)
+				{
+					TArray<FString> niceList = nice.Split(PATH_LIST_SEPARATOR);
+					for (const FString &path : niceList)
+					{
+						if (path.Len() > 0) mSearchPaths.Push(path);
+					}
+				}
+			}
 		}
 	}
 
@@ -633,6 +652,7 @@ int FIWadManager::IdentifyVersion (std::vector<FileSys::ResourceName>&wadfiles, 
 	// Collect all IWADs in the search path
 	for (auto &dir : mSearchPaths)
 	{
+		DEBUG_LOG("Using IWAD search path %s", dir.GetChars());
 		AddIWADCandidates(dir.GetChars());
 	}
 	for (auto& dir : mRecursiveSearchPaths)

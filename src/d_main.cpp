@@ -326,6 +326,14 @@ FARG(bots, "", "", "",
 FARG(debug, "", "", "",
 	"");
 
+FARG(complevel, "Play", "Sets the engine compatibility level.", "boom",
+	"Sets the engine compability level to more closely follow quirks of other engines."
+	"Valid Options:\n"
+	"vanilla: 2, 3, 4, 1.9, doom2, ultimate, udoom, final, tnt, plutonia, vanilla\n"
+	"boom: 9, boom\n"
+	"mbf: 11, mbf\n"
+	"mbf21: 21, mbf21");
+
 EXTERN_FARG(join);
 EXTERN_FARG(host);
 
@@ -487,7 +495,6 @@ CUSTOM_CVAR (String, vid_cursor, "None", CVAR_ARCHIVE | CVAR_NOINITCALL)
 {
 	bool res = false;
 
-
 	if (!stricmp(self, "None" ) && gameinfo.CursorPic.IsNotEmpty())
 	{
 		res = I_SetCursor(TexMan.GetGameTextureByName(gameinfo.CursorPic.GetChars()));
@@ -501,6 +508,11 @@ CUSTOM_CVAR (String, vid_cursor, "None", CVAR_ARCHIVE | CVAR_NOINITCALL)
 		I_SetCursor(TexMan.GetGameTextureByName("cursor"));
 	}
 }
+
+CUSTOM_CVARD(Bool, vid_cursor_invert, false, CVAR_ARCHIVE | CVAR_NOINITCALL, "Flips cursor along its y axis")
+{
+	vid_cursor = *vid_cursor;
+};
 
 // Controlled by startup dialog
 CVAR(Bool, disableautoload, false, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
@@ -778,8 +790,8 @@ CVAR (Flag, sv_nocountendmonst,		dmflags2, DF2_NOCOUNTENDMONST);
 CVAR (Flag, sv_respawnsuper,		dmflags2, DF2_RESPAWN_SUPER);
 CVAR (Flag, sv_nothingspawn,		dmflags2, DF2_NO_COOP_THING_SPAWN);
 CVAR (Flag, sv_alwaysspawnmulti,	dmflags2, DF2_ALWAYS_SPAWN_MULTI);
-CVAR (Flag, sv_novertspread,		dmflags2, DF2_NOVERTSPREAD);
 CVAR (Flag, sv_noextraammo,			dmflags2, DF2_NO_EXTRA_AMMO);
+DEPR_CVAR(Flag, sv_novertspread,	dmflags2, "Engine feature removed in favour of modding");
 
 //==========================================================================
 //
@@ -958,6 +970,8 @@ CVAR(Bool, vid_activeinbackground, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 EXTERN_CVAR(Bool, r_drawvoxels)
 EXTERN_CVAR(Int, gl_tonemap)
+EXTERN_CVAR(Bool, am_match_statusbar)
+
 static uint32_t GetCaps()
 {
 	ActorRenderFeatureFlags FlagSet;
@@ -1099,8 +1113,16 @@ static void DrawRateStuff()
 
 static void DrawOverlays()
 {
-	C_DrawConsole ();
-	M_Drawer ();
+	if(menuactive == MENU_GameplayMenu)
+	{ // draw console above gameplay menus
+		M_Drawer ();
+		C_DrawConsole ();
+	}
+	else
+	{
+		C_DrawConsole ();
+		M_Drawer ();
+	}
 	DrawRateStuff();
 	if (!hud_toggled)
 		FStat::PrintStat (twod);
@@ -1380,9 +1402,17 @@ void D_Display ()
 		if (!hud_toggled)
 		{
 			V_DrawBlend(viewsec);
+
 			if (automapactive)
 			{
-				primaryLevel->automap->Drawer ((hud_althud && viewheight == SCREENHEIGHT) ? viewheight : StatusBar->GetTopOfStatusbar());
+				if (viewheight == SCREENHEIGHT && (hud_althud || am_match_statusbar))
+				{
+					primaryLevel->automap->Drawer (viewheight);
+				}
+				else
+				{
+					primaryLevel->automap->Drawer (StatusBar->GetTopOfStatusbar());
+				}
 			}
 
 			// for timing the statusbar code.
@@ -1404,7 +1434,7 @@ void D_Display ()
 				StatusBar->CallDraw (HUD_AltHud, vp.TicFrac);
 				StatusBar->DrawTopStuff (HUD_AltHud);
 			}
-			else if (viewheight == SCREENHEIGHT && viewactive && screenblocks > 10)
+			else if (viewheight == SCREENHEIGHT && (viewactive || (am_match_statusbar && automapactive)) && screenblocks > 10)
 			{
 				EHudState state = DrawFSHUD ? HUD_Fullscreen : HUD_None;
 				StatusBar->DrawBottomStuff (state);
@@ -1492,7 +1522,7 @@ void D_Display ()
 				}
 				if (paused && multiplayer)
 				{
-					FFont *font = generic_ui ? NewSmallFont : SmallFont;
+					FFont *font = FFont::GetSmallTextFont(generic_ui ? NewSmallFont : SmallFont);
 					FString plrString = GStrings.GetString("TXT_BY");
 					plrString.Substitute("%s", players[paused - 1].userinfo.GetName());
 					TArray<FBrokenLines> txtbyLines = V_BreakLines(font, maxWidth, plrString);
@@ -1520,7 +1550,6 @@ void D_Display ()
 				DrawTexture(twod, tex, 160 - tex->GetDisplayWidth()/2, 100 - tex->GetDisplayHeight()/2,
 					DTA_320x200, true, TAG_DONE);
 			}
-			NoWipe = 10;
 		}
 
 		if (snd_drawoutput)
@@ -1681,7 +1710,7 @@ void D_PageDrawer (void)
 	}
 	if (Subtitle != nullptr)
 	{
-		FFont* font = generic_ui ? NewSmallFont : SmallFont;
+		FFont* font = FFont::GetSmallTextFont(generic_ui ? NewSmallFont : SmallFont);
 		DrawFullscreenSubtitle(font, Subtitle);
 	}
 	if (Advisory.isValid())
@@ -3129,7 +3158,7 @@ bool System_WantGuiCapture()
 {
 	bool wantCapt;
 
-	if (menuactive == MENU_Off)
+	if (menuactive == MENU_Off || menuactive == MENU_GameplayMenu)
 	{
 		wantCapt = ConsoleState == c_down || ConsoleState == c_falling || chatmodeon;
 	}
@@ -3154,7 +3183,7 @@ static bool System_DispatchEvent(event_t* ev)
 {
 	shiftState.AddEvent(ev);
 
-	if (ev->type == EV_Mouse && menuactive == MENU_Off && ConsoleState != c_down && ConsoleState != c_falling && !primaryLevel->localEventManager->Responder(ev) && !paused)
+	if (ev->type == EV_Mouse && (menuactive == MENU_Off || (menuactive == MENU_GameplayMenu && CurrentMenu && !CurrentMenu->mMouseCapture))&& ConsoleState != c_down && ConsoleState != c_falling && !primaryLevel->localEventManager->Responder(ev) && !paused)
 	{
 		if (buttonMap.ButtonDown(Button_Mlook) || freelook)
 		{
@@ -3284,6 +3313,7 @@ void System_LanguageChanged(const char* lang)
 		// does this even make sense on secondary levels...?
 		if (Level->info != nullptr) Level->LevelName = Level->info->LookupLevelName();
 	}
+
 	I_UpdateWindowTitle();
 }
 
@@ -4182,11 +4212,12 @@ static int D_DoomMain_Internal (void)
 	C_InitConsole(80*8, 25*8, false);
 
 	Printf(
-		"%s version %s\nBuild: %s dated %s\nOS: %s\n",
-		GAMENAME,
-		GetVersionString(),
-		BACKEND,
-		GetGitTime(),
+		"%s version %s\nBuild: %s,%s dated %s\nOS: %s\n"
+#ifdef COMPILED_FEATURES
+		"Experiments enabled: " COMPILED_FEATURES "\n"
+#endif
+		, GAMENAME, GetVersionString(),
+		BACKEND, CMAKE_BUILD_TYPE, GetGitTime(),
 		I_DetectOS().GetChars()
 	);
 

@@ -253,7 +253,7 @@ void CT_Drawer (void)
 {
 	auto &vp = r_viewpoint;
 	auto drawer = twod;
-	FFont *displayfont = NewConsoleFont;
+	FFont *displayfont = FFont::GetConsoleFont(NewConsoleFont);
 
 	HU_DrawScores(vp.TicFrac);
 
@@ -290,6 +290,11 @@ void CT_Drawer (void)
 
 		promptwidth = displayfont->StringWidth (prompt) * scalex;
 		x = displayfont->GetCharWidth (displayfont->GetCursor()) * scalex * 2 + promptwidth;
+
+		if (displayfont->IsValidDynamicFont())
+		{
+			y -= displayfont->GetHeight();
+		}
 
 		FString printstr = ChatQueue;
 		// figure out if the text is wider than the screen
@@ -536,7 +541,7 @@ static bool DoSubstitution (FString &out, const char *in)
 
 bool CanChat()
 {
-	return gamestate == GS_LEVEL && !demoplayback && menuactive == MENU_Off;
+	return gamestate == GS_LEVEL && !demoplayback && (menuactive == MENU_Off || menuactive == MENU_GameplayMenu);
 }
 
 CCMD (messagemode)

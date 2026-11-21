@@ -15,6 +15,7 @@
 **
 */
 
+#include "colorspace.h"
 #include "p_local.h"
 #include "p_effect.h"
 #include "g_level.h"
@@ -64,6 +65,7 @@ EXTERN_CVAR(Bool, r_debug_disable_vis_filter)
 EXTERN_CVAR(Float, transsouls)
 EXTERN_CVAR(Float, r_actorspriteshadowalpha)
 EXTERN_CVAR(Float, r_actorspriteshadowfadeheight)
+EXTERN_CVAR(Int, r_distance_cull_type)
 
 //==========================================================================
 //
@@ -222,7 +224,7 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 		if (!modelframe)
 		{
 			// non-black fog with subtractive style needs special treatment
-			if (!Colormap.FadeColor.isBlack())
+			if (!Colormap.FadeColor.isBlack() || r_distance_cull_type > 1)
 			{
 				foglayer = true;
 				// Due to the two-layer approach we need to force an alpha test that lets everything pass
@@ -247,7 +249,7 @@ void HWSprite::DrawSprite(HWDrawInfo *di, FRenderState &state, bool translucent)
 	}
 
 	uint32_t spritetype = actor? uint32_t(actor->renderflags & RF_SPRITETYPEMASK) : 0;
-	if (texture) state.SetMaterial(texture, UF_Sprite, (spritetype == RF_FACESPRITE) ? CTF_Expand : 0, clampmode, translation, OverrideShader);
+	if (texture) state.SetMaterial(texture, UF_Sprite, (spritetype == RF_FACESPRITE) ? CTF_Expand : 0, clampmode, translation, OverrideShader, actor ? actor->GetClass() : nullptr);
 	else if (!modelframe) state.EnableTexture(false);
 
 	//SetColor(lightlevel, rel, Colormap, trans);
@@ -1267,7 +1269,7 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 
 	lightlevel = rendersector->CheckSpriteGlow(lightlevel, thingpos);
 
-	ThingColor = (thing->RenderStyle.Flags & STYLEF_ColorIsFixed) ? thing->fillcolor : 0xffffff;
+	ThingColor = (thing->RenderStyle.Flags & STYLEF_ColorIsFixed) ? thing->fillcolor : Color::str("#fff");
 	ThingColor.a = 255;
 	RenderStyle = thing->RenderStyle;
 

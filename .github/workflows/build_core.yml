@@ -72,7 +72,7 @@ jobs:
 
     # https://github.com/actions/runner-images/issues/14083
     - name: Install Winget
-      if: inputs.os == 'windows-11-arm'
+      if: startsWith(inputs.os, 'windows-') && endsWith(inputs.os, '-arm')
       shell: pwsh
       run: |
         Install-Module -Name Microsoft.WinGet.Client -Repository PSGallery -Force
@@ -89,8 +89,8 @@ jobs:
       id: key
       shell: bash
       run: |
-        ref=${{ github.base_ref || github.ref }}
-        main=${{ github.event.repository.master_branch || 'trunk' }}
+        ref="${{ github.base_ref || github.ref }}"
+        main="${{ github.event.repository.master_branch || 'trunk' }}"
         suffix="${{ inputs.name }}/${{ inputs.build_type }}"
         echo "ref: $ref"
         if [[ -z "${ref}" || "${ref}" == refs/* ]]; then
@@ -153,7 +153,9 @@ jobs:
 
     - name: Setup MSVC
       if: runner.os == 'Windows' && !contains(inputs.name, 'MinGW')
-      uses: ilammy/msvc-dev-cmd@v1 # FIXME: update this
+      uses: TheMrMilchmann/setup-msvc-dev@v4
+      with:
+        arch: x64
 
     - name: Setup MSYS2
       if: runner.os == 'Windows' && contains(inputs.name, 'MinGW')
@@ -239,6 +241,18 @@ jobs:
         find build -ls || true
         echo ::endgroup::
 
+    - name: Setup SDL
+      if: runner.os == 'Linux'
+      id: sdl
+      uses: libsdl-org/setup-sdl@main
+      with:
+        install-linux-dependencies: true
+        version: 3-latest
+        version-sdl2-compat: 2-latest
+        build-type: RelWithDebInfo
+        pre-release: false
+        add-to-environment: true
+
     - name: Build
       env:
         BUILD_TYPE: ${{ inputs.build_type }}
@@ -311,18 +325,22 @@ jobs:
 
         rm -rf soundfonts fm_banks
 
-        mkdir -p package/soundfonts
-        cp -f ../soundfont/DISDAIN.sf2 package/soundfonts
+        mkdir -p package staging
+        cd staging
 
-        mkdir -p package/fm_banks
-        cp -f ../fm_banks/GENMIDI.GS.wopl ../fm_banks/gs-by-papiezak-and-sneakernets.wopn package/fm_banks
+        mkdir -p soundfonts fm_banks
+        cp -f ../../soundfont/* soundfonts
+        cp -f ../../fm_banks/* fm_banks
+        mv -f ../*.exe ../*.pk3 .
+        mv ../package/licenses.zip .
+        7z a -sdel -r "../package/${NAME}.zip" *
 
-        shopt -s nullglob
-        mv -f *.exe *.pk3 *.pdb package
+        if [ -f ../DISDAIN.pdb ]; then
+          mv -f ../*.pdb .
+          7z a -sdel -r "../package/${NAME}.pdb.zip" *
+        fi
 
-        cd package
-        7z a -sdel -r "${NAME}.zip" *
-        cd ..
+        ls ../package
 
     - name: Package macOS
       if: runner.os == 'macOS'
@@ -394,6 +412,7 @@ jobs:
         OWNER: ${{ github.repository_owner }}
         REPO: ${{ github.event.repository.name }}
         TAG: ${{ inputs.environment == 'stable' && 'latest' || 'latest-pre' }}
+        SDL_PREFIX: ${{ steps.sdl.outputs.prefix }}
       run: |
         ldd DISDAIN
 
@@ -436,6 +455,7 @@ jobs:
           --executable="${pfx}/bin/DISDAIN" \
           --desktop-file="${pfx}/share/applications/com.mischiefdonut.disdain.desktop" \
           --library "$(library libopenal.so.)" \
+          --library "$SDL_PREFIX/lib/libSDL3.so.0" \
           --icon-file="${pfx}/share/icons/hicolor/scalable/apps/com.mischiefdonut.disdain.svg"
 
         mv *.AppImage "package/${NAME}.AppImage"

@@ -15,19 +15,26 @@
 **
 */
 
+#include <cstring>
+#include <utility>
 
-#include "filesystem.h"
-#include "colormatcher.h"
+#include "basics.h"
 #include "bitmap.h"
-#include "model_kvx.h"
+#include "colormatcher.h"
+#include "gametexture.h"
+#include "i_modelvertexbuffer.h"
 #include "image.h"
-#include "texturemanager.h"
-#include "modelrenderer.h"
-#include "voxels.h"
-#include "texturemanager.h"
-#include "palettecontainer.h"
-#include "textures.h"
 #include "imagehelpers.h"
+#include "model.h"
+#include "model_kvx.h"
+#include "modelrenderer.h"
+#include "palentry.h"
+#include "palettecontainer.h"
+#include "tarray.h"
+#include "textureid.h"
+#include "texturemanager.h"
+#include "textures.h"
+#include "voxels.h"
 
 #ifdef _MSC_VER
 #pragma warning(disable:4244) // warning C4244: conversion from 'double' to 'float', possible loss of data
@@ -139,7 +146,7 @@ int FVoxelTexture::CopyPixels(FBitmap *bmp, int conversion, int frame)
 			pe[i].a = 255;
 		}
 	}
-	bmp->CopyPixelData(0, 0, bitmap, Width, Height, 1, 16, 0, pe);
+	bmp->CopyPixelData(0, 0, bitmap, Width, Height, 1, 16, FBitmap::Transform::NONE, pe);
 	return 0;
 }
 
@@ -390,9 +397,9 @@ float FVoxelModel::getAspectFactor(float stretch)
 //
 //===========================================================================
 
-void FVoxelModel::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int frame, int frame2, double inter, FTranslationID translation, const FTextureID*, int boneStartPosition)
+void FVoxelModel::RenderFrame(FModelRenderer *renderer, FGameTexture * skin, int frame, int frame2, double inter, FTranslationID translation, const FTextureID*, int boneStartPosition, AActor * act)
 {
-	renderer->SetMaterial(skin, true, translation);
+	renderer->SetMaterial(skin, true, translation, act);
 	renderer->SetupFrame(this, 0, 0, 0, -1);
 	renderer->DrawElements(mNumIndices, 0);
 }

@@ -49,12 +49,7 @@ if( NOT PROJECT_LIBRARIES )
 	set( PROJECT_LIBRARIES "" )
 endif()
 
-add_definitions( -DTHIS_IS_GZDOOM )
-
 if( WIN32 )
-
-	add_definitions( -D_WIN32 )
-
 	set( PROJECT_LIBRARIES
 		Xinput
 		advapi32
@@ -102,10 +97,8 @@ else()
 
 	# Non-Windows version also needs SDL except native OS X backend
 	if( NOT APPLE OR NOT OSX_COCOA_BACKEND )
-		find_package( SDL2 REQUIRED )
-		include_directories( SYSTEM "${SDL2_INCLUDE_DIR}" )
-		link_directories(${SDL2_LINK_DIR})
-		set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} "${SDL2_LIBRARY}" )
+		find_package( SDL2 CONFIG REQUIRED )
+		list( APPEND PROJECT_LIBRARIES SDL2::SDL2 )
 	endif()
 
 endif()
@@ -249,7 +242,6 @@ if( DEM_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	endif()
 
 	if( NOT NO_STRIP )
-		set (CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -s" )
 		set (CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL} -s" )
 	endif()
 endif()
@@ -301,6 +293,10 @@ if (HAVE_VULKAN)
 	list( APPEND PROJECT_LIBRARIES "zvulkan" )
 endif()
 
+add_subdirectory("common/thirdparty/freetype-2.13.3")
+add_subdirectory("common/thirdparty/harfbuzz-7.3.0")
+add_subdirectory("utility/trex")
+list( APPEND PROJECT_LIBRARIES "trex" )
 list( APPEND PROJECT_LIBRARIES "zmusic" )
 list( APPEND PROJECT_LIBRARIES "zwidget" )
 list( APPEND PROJECT_LIBRARIES "${WEBP_TARGET}" )
@@ -347,7 +343,7 @@ else()
 	message( SEND_ERROR "Could not find libvpx" )
 endif()
 
-include_directories( SYSTEM "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${ZMUSIC_INCLUDE_DIR}")
+include_directories( SYSTEM "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${ZMUSIC_INCLUDE_DIR}" "${BOOST_PFR_INCLUDE_DIR}" "${REFLECT_INCLUDE_DIR}")
 
 if( ${HAVE_VM_JIT} )
 	add_definitions( -DHAVE_VM_JIT )
@@ -567,6 +563,7 @@ file( GLOB HEADER_FILES
 	common/thirdparty/utf8proc/*.h
 	common/rendering/*.h
 	common/rendering/gl_load/*.h
+	common/rendering/gl/*.h
 	common/rendering/gles/*.h
 	common/rendering/hwrenderer/data/*.h
 	common/rendering/vulkan/*.h
@@ -1119,6 +1116,7 @@ set (PCH_SOURCES
 	common/menu/messagebox.cpp
 	common/menu/optionmenu.cpp
 	common/menu/resolutionmenu.cpp
+	common/menu/advancedfontmenu.cpp
 	common/menu/menudef.cpp
 	common/menu/savegamemanager.cpp
 	common/statusbar/base_sbar.cpp
@@ -1210,7 +1208,9 @@ set (PCH_SOURCES
 	utility/nodebuilder/nodebuild_extract.cpp
 	utility/nodebuilder/nodebuild_gl.cpp
 	utility/nodebuilder/nodebuild_utility.cpp
+	utility/sc_include.cpp
 	utility/system_theme.cpp
+	utility/simdutf/simdutf.cpp
 
 	# [DISDAIN]
 	playsim/g_aimassist.cpp
@@ -1274,7 +1274,6 @@ set( GAME_SOURCES
 	common/filesystem/source/fs_stringpool.cpp
 	common/filesystem/source/unicode.cpp
 	common/filesystem/source/critsec.cpp
-
 )
 
 set( GAME_NONPCH_SOURCES ${GAME_SOURCES} )
@@ -1386,6 +1385,7 @@ include_directories(
 	xlat
 	utility
 	utility/nodebuilder
+	utility/simdutf
 	scripting
 	scripting/zscript
 	rendering
@@ -1426,6 +1426,13 @@ if( MSVC )
 		COMMENT "Adding manifest..."
 	)
 
+	# Workaround for https://developercommunity.visualstudio.com/t/10828473
+	# Remove this once VS2022 is EOL in 2027 (or 2032 for extended support)
+	if(MSVC_VERSION LESS 1951)
+		message(WARNING "MSVC_CONSTEVAL_BUG: This project uses c++20 features. Some older MSVC versions have bugs that prevent proper compilation. A workaround is being used for your configuration")
+		target_compile_definitions(zdoom PRIVATE MSVC_CONSTEVAL_BUG=1)
+	endif()
+
 endif()
 
 if (WIN32)
@@ -1448,20 +1455,13 @@ else()
 endif()
 
 add_custom_command(TARGET zdoom POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E make_directory "${ZDOOM_RESOURCE_DIR}/soundfonts"
-	COMMAND ${CMAKE_COMMAND} -E make_directory "${ZDOOM_RESOURCE_DIR}/fm_banks"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${CMAKE_SOURCE_DIR}/soundfont"
+		"${ZDOOM_RESOURCE_DIR}/soundfonts"
 
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-		"${CMAKE_SOURCE_DIR}/soundfont/DISDAIN.sf2"
-		"${ZDOOM_RESOURCE_DIR}/soundfonts/DISDAIN.sf2"
-
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-		"${CMAKE_SOURCE_DIR}/fm_banks/GENMIDI.GS.wopl"
-		"${ZDOOM_RESOURCE_DIR}/fm_banks/GENMIDI.GS.wopl"
-
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-		"${CMAKE_SOURCE_DIR}/fm_banks/gs-by-papiezak-and-sneakernets.wopn"
-		"${ZDOOM_RESOURCE_DIR}/fm_banks/gs-by-papiezak-and-sneakernets.wopn"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		"${CMAKE_SOURCE_DIR}/fm_banks"
+		"${ZDOOM_RESOURCE_DIR}/fm_banks"
 
 	VERBATIM
 )

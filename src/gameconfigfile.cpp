@@ -27,6 +27,7 @@
 #include "c_bind.h"
 #include "c_cvars.h"
 #include "c_dispatch.h"
+#include "colorspace.h"
 #include "cmdlib.h"
 #include "d_main.h"
 #include "doomstat.h"
@@ -41,6 +42,8 @@
 #include "v_video.h"
 #include "version.h"
 #include "zstring.h"
+
+using Color::str;
 
 #if !defined _MSC_VER && !defined __APPLE__
 #include "i_system.h"  // for SHARE_DIR
@@ -270,17 +273,48 @@ FGameConfigFile::FGameConfigFile ()
 		}
 	}
 
-	// Add some self-documentation.
+#ifdef _WIN32
+#define PATHSEP_STR "semicolon"
+#else
+#define PATHSEP_STR "colon"
+#endif
+
 	SetSectionNote("IWADSearch.Directories",
+		// Add environment variable documentation.
+		"\n#### Environment Variable Information ####"
+		"\n#"
+		"\n# . references the current directory that UZDoom is launched from within"
+		"\n# your terminal or console."
+		"\n#"
+		"\n# $DOOMWADDIR references a system environment variable of the same name"
+		"\n# that contains a search directory."
+		"\n#"
+		"\n# $DOOMWADPATH references a system environment variable of the same name"
+		"\n# whose value contains a " PATHSEP_STR " delimited list of searchable directories."
+		"\n# It's *similar* to $DOOMWADDIR, except that $DOOMWADPATH is a list of"
+		"\n# possible search directories."
+		"\n#"
+		"\n# $HOME references your system user directory."
+		"\n#"
+		"\n# $PROGDIR references the directory that the main binary is located."
+		"\n#"
+		"\n# For more information and examples of how to use environment variables,"
+		"\n# please see: https://zdoom.org/wiki/Configuration_file#Environment_Variables"
+		"\n#"
+		"\n####\n\n" // Add a final newline before going back to the original section header text.
+		// Finish environment variable documentation.
+
 		"# These are the directories to automatically search for IWADs.\n"
 		"# Each directory should be on a separate line, preceded by Path=\n");
 	SetSectionNote("FileSearch.Directories",
 		"# These are the directories to search for wads added with the -file\n"
-		"# command line parameter, if they cannot be found with the path\n"
-		"# as-is. Layout is the same as for IWADSearch.Directories\n");
+		"# command line parameter, if they cannot be found with the path as-is.\n"
+		"# Layout is the same as for IWADSearch.Directories\n");
 	SetSectionNote("SoundfontSearch.Directories",
 		"# These are the directories to search for soundfonts that let listed in the menu.\n"
 		"# Layout is the same as for IWADSearch.Directories\n");
+
+#undef PATHSEP_STR
 }
 
 FGameConfigFile::~FGameConfigFile ()
@@ -995,6 +1029,10 @@ void FGameConfigFile::ArchiveGameData(FString section)
 
 	if(!bKeySetup) return;
 
+	Bindings.DoBindsBackup ();
+	DoubleBindings.DoBindsBackup ();
+	AutomapBindings.DoBindsBackup ();
+
 	M_SaveCustomKeys (this, section);
 
 	SetSection (section + ".Bindings", true);
@@ -1005,6 +1043,10 @@ void FGameConfigFile::ArchiveGameData(FString section)
 
 	SetSection (section + ".AutomapBindings", true);
 	AutomapBindings.ArchiveBindings (this);
+
+	Bindings.RestoreBindsBackup ();
+	DoubleBindings.RestoreBindsBackup ();
+	AutomapBindings.RestoreBindsBackup ();
 }
 
 void FGameConfigFile::ArchiveGlobalData ()
@@ -1095,11 +1137,11 @@ void FGameConfigFile::SetRavenDefaults (bool isHexen)
 	val.Int = CR_YELLOW;
 	msgmidcolor2->SetGenericRepDefault (val, CVAR_Int);
 
-	val.Int = 0x543b17;
+	val.Int = str("#543b17");
 	am_wallcolor->SetGenericRepDefault (val, CVAR_Int);
-	val.Int = 0xd0b085;
+	val.Int = str("#d0b085");
 	am_fdwallcolor->SetGenericRepDefault (val, CVAR_Int);
-	val.Int = 0x734323;
+	val.Int = str("#734323");
 	am_cdwallcolor->SetGenericRepDefault (val, CVAR_Int);
 
 	val.Int = 0;
@@ -1107,7 +1149,7 @@ void FGameConfigFile::SetRavenDefaults (bool isHexen)
 
 	// Fix the Heretic/Hexen automap colors so they are correct.
 	// (They were wrong on older versions.)
-	if (*am_wallcolor == 0x2c1808 && *am_fdwallcolor == 0x887058 && *am_cdwallcolor == 0x4c3820)
+	if (*am_wallcolor == str("#2c1808") && *am_fdwallcolor == str("#887058") && *am_cdwallcolor == str("#4c3820"))
 	{
 		am_wallcolor->ResetToDefault ();
 		am_fdwallcolor->ResetToDefault ();
@@ -1116,7 +1158,7 @@ void FGameConfigFile::SetRavenDefaults (bool isHexen)
 
 	if (!isHexen)
 	{
-		val.Int = 0x3f6040;
+		val.Int = str("#3f6040");
 		color->SetGenericRepDefault (val, CVAR_Int);
 	}
 }
